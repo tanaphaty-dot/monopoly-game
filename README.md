@@ -4,10 +4,10 @@
 
 | สมาชิก | ฟังก์ชันการทำงาน & หน้า GUI ที่รับผิดชอบ | ออกแบบ Class Diagram และพัฒนา Class |
 | :--- | :--- | :--- |
-| **ฟิล์ม** | **ระบบกระดาน & อาณาเขต**<br>• พัฒนาอัลกอริทึมการเชื่อมต่อพื้นที่ <br>• ออกแบบหน้า UI แสดงผลกระดาน 24 ช่องและโบนัสอาณาเขตด้วย Figma/Swing | `Board`<br>`Tile`<br>`CityTile`<br>`EventTile`<br>`TileFactory` |
-| **เดียร์** | **ระบบผู้เล่น & การเคลื่อนที่**<br>• พัฒนาระบบสถานะผู้เล่น สินทรัพย์ และการสุ่มเต๋า<br>• ออกแบบ UI แสดงข้อมูลผู้เล่น (Player Panel) และช่องสัมภาระ (Inventory) | `Player`<br>`Dice`<br>`Card`<br>`Inventory` |
-| **เก๋า** | **ระบบการต่อสู้ & เหตุการณ์**<br>• พัฒนาสูตรคำนวณพลังตี/เกราะเมือง และผลลัพธ์การรบ<br>• ออกแบบ UI หน้าจอ Pop-up ช่วงตัดสินใจตีเมืองและผลลัพธ์การต่อสู้ | `SiegeSystem`<br>`BattleResult`<br>`EventCard` |
-| **พีท** | **ตัวควบคุมเกม & หน้าจอหลัก**<br>• พัฒนาระบบ Turn Loop, State Management และสลับผู้เล่น (Hotseat)<br>• ออกแบบ Main GUI Framework และหน้าจอเมนูหลัก (Main Menu / Game Over) | `GameController`<br>`GameObserver`<br>`MainUI` |
+| **ฟิล์ม** | **ระบบกระดาน & อาณาเขต**<br>• ออกแบบและคำนวณกราฟกระดาน 24 ช่อง <br>• พัฒนาอัลกอริทึมหาอาณาเขตเมืองต่อเนื่อง | `Board`<br>`Tile`<br>`CityTile`<br>`EventTile`<br>`TileFactory` |
+| **เดียร์** | **ระบบผู้เล่น & สถานะ**<br>• จัดการข้อมูลสถานะผู้เล่น เงิน และการเคลื่อนที่<br>• สุ่มลูกเต๋า ระบบการ์ด และจัดการแอ็กชันค้าง | `Player`<br>`Dice`<br>`Card`<br>`PendingAction` |
+| **เก๋า** | **ระบบการต่อสู้ & เหตุการณ์**<br>• คำนวณสงครามยึดเมือง เกราะป้องกัน และค่าปรับ<br>• ประมวลผลเอฟเฟกต์การ์ดเหตุการณ์สุ่ม | `SiegeSystem`<br>`BattleResult`<br>`EventCard` |
+| **พีท** | **ตัวควบคุมเกม, ไฟล์ & หน้าจอ UI**<br>• คุม Game Controller, Turn Loop และ State Management<br>• ระบบบันทึก/โหลดไฟล์ (savegame.txt) และ UI Swing | `GameController`<br>`FileManager`<br>`GameSettings`<br>`GameObserver`<br>`UI` |
 
 ## Monopoly & Zone Rush
 
@@ -24,46 +24,56 @@
 
 ---
 
-##  Tech Stack & Environment
-
-* **Language:** Java 17+
-* **GUI Framework:** Java Swing (Standard Java Library)
-* **UI Design Tool:** Figma
-* **Version Control:** Git / GitHub
-* **IDE Supported:** IntelliJ IDEA / Eclipse / NetBeans
-
----
-
 ##  แผนผังกระดาน 24 ช่อง (Board Layout)
 
 กระดานแบ่งออกเป็น 4 โซนอาณาเขต (สีละ 3 เมือง) พร้อมจุดยุทธศาสตร์และช่องเหตุการณ์:
-* **Zone Green (ช่อง 02, 03, 05):** โซนป่า - ยึดง่าย ราคาถูก เน้นเปิดเกม
-* **Zone Blue (ช่อง 07, 09, 10):** โซนน้ำ - ค่าผ่านทางระดับกลาง
-* **Zone Yellow (ช่อง 13, 14, 16):** โซนเหมืองเหล็ก - ค่าผ่านทางและพลังป้องกันสูง
-* **Zone Red (ช่อง 19, 20, 22):** โซนเมืองหลวง - โซนยุทธศาสตร์แพงที่สุดในเกม
-* **Special Tiles:** จุดเริ่มต้น (01), ค่ายพักพล (06), หอคอยสังเกตการณ์ (12), คุกกี้/คุกสงคราม (15), สนามซ้อมรบ (18) และช่องการ์ดแผนการสุ่มเหตุการณ์
+* **Zone Green (ช่อง 01, 02, 04):** โซนป่า - ยึดง่าย ราคาถูก เน้นเปิดเกม
+* **Zone Blue (ช่อง 06, 08, 09):** โซนน้ำ - ค่าผ่านทางระดับกลาง
+* **Zone Yellow (ช่อง 12, 13, 15):** โซนเหมืองเหล็ก - ค่าผ่านทางและพลังป้องกันสูง
+* **Zone Red (ช่อง 18, 19, 21):** โซนเมืองหลวง - โซนยุทธศาสตร์แพงที่สุดในเกม
+* **Special Tiles:** จุดเริ่มต้น (00), ค่ายพักพล (05), หอคอยสังเกตการณ์ (11), คุกกี้/คุกสงคราม (14), สนามซ้อมรบ (17) และช่องการ์ดแผนการสุ่มเหตุการณ์
 
 ---
 
-##  โครงสร้างสถาปัตยกรรม (Design Patterns)
-
-โปรเจกต์นี้มีการประยุกต์ใช้ **Software Design Patterns** เพื่อโครงสร้างโค้ดที่เป็นระเบียบตามหลัก OOP:
-
-* **Factory Pattern (`TileFactory`):** ใช้สร้างวัตถุประเภท `Tile` บนกระดาน
-* **Observer Pattern (`GameObserver`):** ใช้ในการเชื่อมต่อระหว่าง Game State Controller กับหน้าจอ Swing UI เพื่ออัปเดตข้อมูลแบบ Real-time
-* **State Pattern (`TurnState`):** จัดการลำดับขั้นตอนในแต่ละเทิร์น (`START_TURN`, `ROLL_DICE`, `ACTION`, `SIEGE`, `END_TURN`)
-
----
-
-## 📂 โครงสร้างโปรเจกต์ (Directory Structure)
+## โครงสร้างโปรเจกต์ (Directory Structure) (แนวทางไฟล์)
 
 ```text
-src/
-├── controller/         # ควบคุม Logic การเล่นและ State ของเกม (GameController)
-├── model/
-│   ├── board/          # จัดการกระดาน, ช่อง (Tile, Board, CityTile, EventTile)
-│   ├── entity/         # จัดการข้อมูลผู้เล่น และไอเทม (Player, Dice, Card)
-│   └── combat/         # ระบบคำนวณการตีเมืองและผลลัพธ์ (SiegeSystem, BattleResult)
-├── view/               # หน้าจอและส่วนประกอบ GUI (MainUI, BoardPanel, PlayerPanel)
-├── pattern/            # Classes/Interfaces สื่อกลางสำหรับ Factory, Observer, State
-└── Main.java           # จุดเริ่มต้นการทำงานของโปรแกรม (Entry Point)
+MonopolyGame/
+└── src/
+    ├── Main.java                       # เริ่มต้นโปรแกรม
+    │
+    ├── controller/                     # ส่วนควบคุม Logic เกม เซฟไฟล์ และตั้งค่า
+    │   ├── FileManager.java            # เซฟ/โหลดสถานะผู้เล่นลง savegame.txt
+    │   ├── GameController.java         # ตัวคุม Turn State(รอบผู้เล่น) และสั่งประมวลผล
+    │   └── GameSettings.java           # จัดเก็บการตั้งค่าผู้เล่นและเงินเริ่มต้น
+    │
+    ├── model/                          # ส่วนประมวลผลกฎเกณฑ์และข้อมูล
+    │   ├── board/                      # โครงสร้างกระดานและอัลกอริทึมพื้นที่
+    │   │   ├── Board.java              # กระดานหลัก + อัลกอริทึม BFS
+    │   │   ├── CityTile.java           # คลาสช่องเมืองคำนวณค่าเช่า/เกราะ
+    │   │   ├── EventTile.java          # คลาสช่องสุ่มเหตุการณ์
+    │   │   ├── Tile.java               # Abstract Class สำหรับช่องบนกระดาน
+    │   │   └── TileFactory.java        # Factory Pattern สำหรับสร้าง Tile
+    │   │
+    │   ├── combat/                     # ระบบการต่อสู้และการ์ด
+    │   │   ├── BattleResult.java       # คลาสเก็บผลการชิงเมือง
+    │   │   ├── EventCard.java          # ประมวลผลเอฟเฟกต์การ์ด
+    │   │   └── SiegeSystem.java        # ระบบคำนวณการตีเมืองและค่าปรับ
+    │   │
+    │   └── entity/                     # ผู้เล่น อุปกรณ์ และสถานะ
+    │       ├── Card.java               # การ์ดเหตุการณ์
+    │       ├── Dice.java               # ลูกเต๋าสุ่มแต้ม
+    │       ├── PendingAction.java      # Enum เก็บสถานะรอดำเนินการ (Enum คือชนิดข้อมูลพิเศษเก็บ กลุ่มของค่าคงที่ (Constants) ที่มีจำนวนแน่นอน)
+    │       └── Player.java             # ผู้เล่นและสินทรัพย์
+    │
+    ├── pattern/                        # Interface สำหรับ Design Pattern
+    │   └── GameObserver.java           # Observer Interface เชื่อม GUI
+    │
+    └── view/                           # ส่วนประกอบหน้าจอแสดงผล Swing GUI
+        ├── BoardPanel.java             # วาดกระดาน 24 ช่องและตัวเดิน 2D
+        ├── FontUtil.java               # จัดการฟอนต์ไทย
+        ├── GamePanel.java              # หน้ากระดานเล่นเกมหลัก
+        ├── Lang.java                   # คลังคีย์ข้อความระบบ 2 ภาษา (TH/EN)
+        ├── MainMenuPanel.java          # หน้าเมนูหลัก (Start / Settings / Exit)
+        ├── MainUI.java                 # หน้าต่างหลักใช้ CardLayout สลับหน้าจอ
+        └── SettingsPanel.java          # หน้าจอปรับแต่งจำนวนคนและเงิน
