@@ -1,5 +1,7 @@
 package model.board;
 
+import model.entity.Player;
+
 /**
  * คลาสสำหรับช่องสุ่มเหตุการณ์การ์ด
  * @author ฟิล์ม (feature/board-setup)
@@ -15,7 +17,7 @@ public class EventTile extends Tile {
     public String getEventType() { return eventType; }
 
     @Override
-    public void onStep(Object player) {
+    public void onStep(Player player) {
         // TODO (ถึง เก๋า): ลิงก์ช่องนี้เข้ากับระบบจั่วการ์ด EventCard ของเก๋าที่เป็น combat
         System.out.println("[Board] Player landed on EventTile: " + getName() + " (Type: " + eventType + ")");
     }

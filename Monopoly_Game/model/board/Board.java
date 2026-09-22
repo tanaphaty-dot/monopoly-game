@@ -2,6 +2,8 @@ package model.board;
 
 import java.util.*;
 
+import model.entity.Player;
+
 /**
  * (คลาสจัดการกระดานหลัก)
  * 
@@ -61,7 +63,7 @@ public class Board {
     // ใช้ Object targetOwner ชั่วคราว ฝากเดียร์กับเก๋าช่วยแก้ เป็น Player targetOwner
 
     //รับ ID ช่องที่ตก และ ผู้เล่นเจ้าของเมือง
-    public int calculateConnectedTerritory(int startTileId, Object targetOwner) {
+    public int calculateConnectedTerritory(int startTileId, Player targetOwner) {
         if (targetOwner == null) return 0;
         
         Tile startTile = tiles.get(startTileId);

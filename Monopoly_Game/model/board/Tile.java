@@ -1,5 +1,7 @@
 package model.board;
 
+import model.entity.Player;
+
 /**
  * (Class พ่อ / Abstract Base Class) สืบไป City กับ EventTile ต้องถูกเก็บเป็นลิสใน Board (List<Tile>)
  * Abstract Class สำหรับช่องทั้งหมดบนกระดาน   ***เขียนแบบนี้กันด้วย***
@@ -21,5 +23,5 @@ public abstract class Tile { // Tile คือช่องในกระดา�
     // ฝากเดียร์ช่วย Refactor เปลี่ยน Parameter จาก Object เป็น Player ด้้วย
     //                           |||
     //                           VVV
-    public abstract void onStep(Object player);  //ใช้ abstract เพราะตอนผู้เล่นเดินตก (onStep) จะไม่เหมือนกัน แต่ชื่อกับidของคคน จะเหมือนเดิมตลอด
+    public abstract void onStep(Player player);  //ใช้ abstract เพราะตอนผู้เล่นเดินตก (onStep) จะไม่เหมือนกัน แต่ชื่อกับidของคคน จะเหมือนเดิมตลอด
 }
