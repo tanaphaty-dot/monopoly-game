@@ -1,5 +1,7 @@
 package model.board;
 
+import model.entity.Player;
+
 /**
  * คลาสสำหรับช่องเมือง ซื้อขายได้ มีระบบค่าเช่าและโซน
  * @author ฟิล์ม (feature/board-setup)
@@ -11,7 +13,7 @@ public class CityTile extends Tile { // สืบทอดรับค่าส�
 
     // NOTICE (ถึง เดียร์): Mockup โดยใช้ Object owner ชั่วคราว (Mockup คือเป็นแบบจำลองเฉยๆ)
     // เดียร์สร้างคลาส Player เสร็จแล้ว ให้เปลี่ยนชนิดตัวแปรเป็น Player owner ด้วยนะ
-    private Object owner; // รอรับค่าถ้ามีคนเป็นเจ้าของ ซื้อ
+    private Player owner; // รอรับค่าถ้ามีคนเป็นเจ้าของ ซื้อ
 
     public CityTile(int id, String name, int basePrice, int baseRent, String zone) { 
         super(id, name);
@@ -25,12 +27,12 @@ public class CityTile extends Tile { // สืบทอดรับค่าส�
     public int getBaseRent() { return baseRent; }
     public String getZone() { return zone; }
 
-    // NOTICE (ถึง เดียร์): ฝากเปลี่ยน Return type และ Parameter เป็น Player
-    public Object getOwner() { return owner; }
-    public void setOwner(Object owner) { this.owner = owner; }
+    // แก้เป็น Player ละ
+    public Player getOwner() { return owner; }
+    public void setOwner(Player owner) { this.owner = owner; }
 
     @Override
-    public void onStep(Object player) {
+    public void onStep(Player player) {
         // TODO (ถึง พีท/เก๋า): เมื่อตกเมืองนี้ ให้ GameController หรือ SiegeSystem เรียกคำนวณการซื้อ/จ่ายค่าเช่า
         System.out.println("[Board] Player landed on CityTile: " + getName() + " (Zone: " + zone + ")");
     }
