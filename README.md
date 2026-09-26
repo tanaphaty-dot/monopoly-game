@@ -40,14 +40,13 @@
 ```text
 MonopolyGame/
 ├── savegame.txt                          # [เพิ่มเติม] ไฟล์บันทึกสถานะเกม (สร้างอัตโนมัติ)
-└── src/
-    ├── Main.java                         # จุดเริ่มต้นโปรแกรม
+└── ├── Main.java                         # จุดเริ่มต้นโปรแกรม
     ├── GameSystemTest.java               # [เพิ่มเติม] สคริปต์รันทดสอบระบบรวม (Test)
     │
     ├── controller/                       # ส่วนควบคุม Logic เกม เซฟไฟล์ และตั้งค่า
     │   ├── FileManager.java              # เซฟ/โหลดสถานะลง savegame.txt
     │   ├── GameController.java           # ตัวคุม Turn State และสั่งประมวลผล
-    │   └── GameSettings.java             # จัดเก็บการตั้งค่าผู้เล่นและเงินเริ่มต้น
+    │   └── GameSetting.java              # จัดเก็บการตั้งค่าผู้เล่นและเงินเริ่มต้น
     │
     ├── model/                            # ส่วนประมวลผลกฎเกณฑ์และข้อมูล
     │   ├── board/                        # โครงสร้างกระดานและอัลกอริทึมพื้นที่
@@ -72,10 +71,12 @@ MonopolyGame/
     │   └── GameObserver.java             # Observer Interface เชื่อม GUI
     │
     └── view/                             # ส่วนประกอบหน้าจอแสดงผล Swing GUI
+        ├── ActionControlPanel.java       # แผงปุ่มควบคุมแอ็กชันของผู้เล่นในแต่ละเทิร์น
         ├── BoardPanel.java               # วาดกระดาน 24 ช่องและตัวเดิน 2D
         ├── FontUtil.java                 # จัดการฟอนต์ไทย (แก้ตัวอักษรสี่เหลี่ยม)
+        ├── GameLogPanel.java             # แสดง Log/ประวัติเหตุการณ์ระหว่างเล่นเกม
         ├── GamePanel.java                # หน้ากระดานเล่นเกมหลัก
-        ├── Lang.java                     # คลังคีย์ข้อความระบบ 2 ภาษา (TH/EN)
         ├── MainMenuPanel.java            # หน้าเมนูหลัก (Start / Settings / Exit)
         ├── MainUI.java                   # หน้าต่างหลักใช้ CardLayout สลับหน้าจอ
+        ├── PlayerStatusPanel.java        # แสดงสถานะผู้เล่น เงิน และเมืองที่ครอบครอง
         └── SettingsPanel.java            # หน้าจอปรับแต่งจำนวนคนและเงิน
