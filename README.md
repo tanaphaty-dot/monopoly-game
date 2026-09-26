@@ -39,41 +39,43 @@
 
 ```text
 MonopolyGame/
+├── savegame.txt                          # [เพิ่มเติม] ไฟล์บันทึกสถานะเกม (สร้างอัตโนมัติ)
 └── src/
-    ├── Main.java                       # เริ่มต้นโปรแกรม
+    ├── Main.java                         # จุดเริ่มต้นโปรแกรม
+    ├── GameSystemTest.java               # [เพิ่มเติม] สคริปต์รันทดสอบระบบรวม (Test)
     │
-    ├── controller/                     # ส่วนควบคุม Logic เกม เซฟไฟล์ และตั้งค่า
-    │   ├── FileManager.java            # เซฟ/โหลดสถานะผู้เล่นลง savegame.txt
-    │   ├── GameController.java         # ตัวคุม Turn State(รอบผู้เล่น) และสั่งประมวลผล
-    │   └── GameSettings.java           # จัดเก็บการตั้งค่าผู้เล่นและเงินเริ่มต้น
+    ├── controller/                       # ส่วนควบคุม Logic เกม เซฟไฟล์ และตั้งค่า
+    │   ├── FileManager.java              # เซฟ/โหลดสถานะลง savegame.txt
+    │   ├── GameController.java           # ตัวคุม Turn State และสั่งประมวลผล
+    │   └── GameSettings.java             # จัดเก็บการตั้งค่าผู้เล่นและเงินเริ่มต้น
     │
-    ├── model/                          # ส่วนประมวลผลกฎเกณฑ์และข้อมูล
-    │   ├── board/                      # โครงสร้างกระดานและอัลกอริทึมพื้นที่
-    │   │   ├── Board.java              # กระดานหลัก + อัลกอริทึม BFS
-    │   │   ├── CityTile.java           # คลาสช่องเมืองคำนวณค่าเช่า/เกราะ
-    │   │   ├── EventTile.java          # คลาสช่องสุ่มเหตุการณ์
-    │   │   ├── Tile.java               # Abstract Class สำหรับช่องบนกระดาน
-    │   │   └── TileFactory.java        # Factory Pattern สำหรับสร้าง Tile
+    ├── model/                            # ส่วนประมวลผลกฎเกณฑ์และข้อมูล
+    │   ├── board/                        # โครงสร้างกระดานและอัลกอริทึมพื้นที่
+    │   │   ├── Board.java                # กระดานหลัก + อัลกอริทึม BFS
+    │   │   ├── CityTile.java             # คลาสช่องเมืองคำนวณค่าเช่า/เกราะ
+    │   │   ├── EventTile.java            # คลาสช่องสุ่มเหตุการณ์
+    │   │   ├── Tile.java                 # Abstract Class สำหรับช่องบนกระดาน
+    │   │   └── TileFactory.java          # Factory Pattern สำหรับสร้าง Tile
     │   │
-    │   ├── combat/                     # ระบบการต่อสู้และการ์ด
-    │   │   ├── BattleResult.java       # คลาสเก็บผลการชิงเมือง
-    │   │   ├── EventCard.java          # ประมวลผลเอฟเฟกต์การ์ด
-    │   │   └── SiegeSystem.java        # ระบบคำนวณการตีเมืองและค่าปรับ
+    │   ├── combat/                       # ระบบการต่อสู้และการ์ด
+    │   │   ├── BattleResult.java         # คลาสเก็บผลการชิงเมือง
+    │   │   ├── EventCard.java            # ประมวลผลเอฟเฟกต์การ์ด
+    │   │   └── SiegeSystem.java          # ระบบคำนวณการตีเมืองและค่าปรับ
     │   │
-    │   └── entity/                     # ผู้เล่น อุปกรณ์ และสถานะ
-    │       ├── Card.java               # การ์ดเหตุการณ์
-    │       ├── Dice.java               # ลูกเต๋าสุ่มแต้ม
-    │       ├── PendingAction.java      # Enum เก็บสถานะรอดำเนินการ (Enum คือชนิดข้อมูลพิเศษเก็บ กลุ่มของค่าคงที่ (Constants) ที่มีจำนวนแน่นอน)
-    │       └── Player.java             # ผู้เล่นและสินทรัพย์
+    │   └── entity/                       # ผู้เล่น อุปกรณ์ และสถานะ
+    │       ├── Card.java                 # การ์ดเหตุการณ์
+    │       ├── Dice.java                 # ลูกเต๋าสุ่มแต้ม
+    │       ├── PendingAction.java        # Enum เก็บสถานะรอดำเนินการ
+    │       └── Player.java               # ผู้เล่นและสินทรัพย์
     │
-    ├── pattern/                        # Interface สำหรับ Design Pattern
-    │   └── GameObserver.java           # Observer Interface เชื่อม GUI
+    ├── pattern/                          # Interface สำหรับ Design Pattern
+    │   └── GameObserver.java             # Observer Interface เชื่อม GUI
     │
-    └── view/                           # ส่วนประกอบหน้าจอแสดงผล Swing GUI
-        ├── BoardPanel.java             # วาดกระดาน 24 ช่องและตัวเดิน 2D
-        ├── FontUtil.java               # จัดการฟอนต์ไทย
-        ├── GamePanel.java              # หน้ากระดานเล่นเกมหลัก
-        ├── Lang.java                   # คลังคีย์ข้อความระบบ 2 ภาษา (TH/EN)
-        ├── MainMenuPanel.java          # หน้าเมนูหลัก (Start / Settings / Exit)
-        ├── MainUI.java                 # หน้าต่างหลักใช้ CardLayout สลับหน้าจอ
-        └── SettingsPanel.java          # หน้าจอปรับแต่งจำนวนคนและเงิน
+    └── view/                             # ส่วนประกอบหน้าจอแสดงผล Swing GUI
+        ├── BoardPanel.java               # วาดกระดาน 24 ช่องและตัวเดิน 2D
+        ├── FontUtil.java                 # จัดการฟอนต์ไทย (แก้ตัวอักษรสี่เหลี่ยม)
+        ├── GamePanel.java                # หน้ากระดานเล่นเกมหลัก
+        ├── Lang.java                     # คลังคีย์ข้อความระบบ 2 ภาษา (TH/EN)
+        ├── MainMenuPanel.java            # หน้าเมนูหลัก (Start / Settings / Exit)
+        ├── MainUI.java                   # หน้าต่างหลักใช้ CardLayout สลับหน้าจอ
+        └── SettingsPanel.java            # หน้าจอปรับแต่งจำนวนคนและเงิน
