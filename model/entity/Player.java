@@ -39,6 +39,11 @@ public class Player {
         this.money += amount;
     }
 
+    // เพิ่มใหม่: ใช้ตอนโหลดเซฟกลับมา (FileManager/GameController) เพื่อคืนค่าเงินตรงๆ
+    public void setMoney(int money) {
+        this.money = money;
+    }
+    
     public boolean deductMoney(int amount) {
         if (this.money >= amount) {
             this.money -= amount;
