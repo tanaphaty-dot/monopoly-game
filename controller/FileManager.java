@@ -3,33 +3,27 @@ package controller;
 import java.io.*;
 
 /**
- * คลาสจัดการการอ่าน/เขียนไฟล์เพื่อเซฟและโหลดสถานะเกมลงไฟล์ savegame.txt
+ * จัดการการอ่านและบันทึกไฟล์สถานะเกม
  * @author พีท (feature/ui-system)
  */
 public class FileManager {
-    private static final String SAVE_FILE_PATH = "savegame.txt";
+    private static final String DEFAULT_FILE = "savegame.txt";
 
-    /**
-     * บันทึกข้อมูลข้อความสถานะเกมลงในไฟล์ savegame.txt
-     */
-    public static boolean saveGame(String data) {
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(SAVE_FILE_PATH))) {
+    public static void saveGame(String data, String filePath) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
             writer.write(data);
-            return true;
         } catch (IOException e) {
-            System.err.println("Error saving game: " + e.getMessage());
-            return false;
+            e.printStackTrace();
         }
     }
 
-    /**
-     * อ่านข้อมูลสถานะเกมจากไฟล์ savegame.txt
-     */
-    public static String loadGame() {
-        File file = new File(SAVE_FILE_PATH);
-        if (!file.exists()) {
-            return null;
-        }
+    public static void saveGame(String data) {
+        saveGame(data, DEFAULT_FILE);
+    }
+
+    public static String loadGame(String filePath) {
+        File file = new File(filePath);
+        if (!file.exists()) return null;
 
         StringBuilder content = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
@@ -39,8 +33,21 @@ public class FileManager {
             }
             return content.toString();
         } catch (IOException e) {
-            System.err.println("Error loading game: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
+    }
+
+    public static String loadGame() {
+        return loadGame(DEFAULT_FILE);
+    }
+
+    // เพิ่มใหม่: เช็กว่ามีไฟล์เซฟอยู่มั้ย ใช้เปิด/ปิดปุ่ม "ดำเนินเกมต่อ" ในเมนูหลัก
+    public static boolean saveExists(String filePath) {
+        return new File(filePath).exists();
+    }
+
+    public static boolean saveExists() {
+        return saveExists(DEFAULT_FILE);
     }
 }
