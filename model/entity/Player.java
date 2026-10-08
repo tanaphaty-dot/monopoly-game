@@ -43,7 +43,7 @@ public class Player {
     public void setMoney(int money) {
         this.money = money;
     }
-    
+
     public boolean deductMoney(int amount) {
         if (this.money >= amount) {
             this.money -= amount;

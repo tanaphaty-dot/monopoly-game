@@ -1,53 +1,41 @@
 package model.combat;
 
+import java.util.Random;
 import model.board.Board;
 import model.entity.Card;
 import model.entity.Player;
 
 /**
- * คำนวณเอฟเฟกต์ของการ์ดเมื่อคนตกช่อง EventTile หรือใช้การ์ด
- * @author เก๋า combat-system
+ * ระบบสุ่มและการ์ดเหตุการณ์
+ * @author เก๋า (feature/combat-system)
  */
 public class EventCard {
 
-    /**
-     * NOTICE (ถึง พีท & เดียร์): พีทเรียกใช้เมธอดถ้าคนตกช่อง EventTile 
-     * โค้ดจะอ่านประเภทการ์ด (Card.getType()) ของเดียร์ แล้วส่งผลต่อตัวเกม
-     */
-    public static String applyEffect(Card card, Player player, Board board) {
-        if (card == null || player == null) return "ไม่มีผลเกิดขึ้น";
+    public static Card getRandomCard() {
+        Random rand = new Random();
+        int roll = rand.nextInt(3);
 
-        String type = card.getType();
-        String resultText = "";
-
-        switch (type) {
-            case "TREASURE":
-                player.addMoney(200);
-                resultText = player.getName() + "ได้รับสมบัติคลังหลวง! ได้รับเงิน +200";
-                break;
-
-            case "TAX_PENALTY":
-                player.deductMoney(100);
-                resultText = player.getName() + " โดนเรียกเก็บภาษีสงคราม! เสียเงิน -100";
-                break;
-
-            case "TELEPORT_START":
-                player.moveTo(0); // ย้ายไปช่องจุดเริ่มต้น (0)
-                player.addMoney(100); // ได้เงินผ่านจุดเริ่มต้น
-                resultText = player.getName() + " วาร์ปกลับจุดเริ่มต้น! ได้รับเงิน +100";
-                break;
-
-            case "JAIL_TRAP":
-                player.moveTo(14); // ย้ายไปช่องคุก (14)
-                player.setInJail(true);
-                resultText = player.getName() + " ติดกับดัก! ถูกส่งเข้าคุกสงคราม";
-                break;
-
-            default:
-                resultText = player.getName() + " จั่วได้การ์ด: " + card.getTitle();
-                break;
+        if (roll == 0) {
+            return new Card("C1", "ขุดพบสมบัติ", "ได้รับเงินโบนัส 200 บาท", "TREASURE");
+        } else if (roll == 1) {
+            return new Card("C2", "ติดกับดักคุก", "ถูกส่งเข้าคุกช่อง 14 ทันที", "JAIL");
+        } else {
+            return new Card("C3", "จ่ายภาษีสังคม", "เสียเงินค่าปรับ 100 บาท", "TAX_PENALTY");
         }
+    }
 
-        return resultText;
+    public static void applyEffect(Card card, Player player, Board board) {
+        if (card == null || player == null) return;
+
+        String type = card.getType() != null ? card.getType().toUpperCase() : "";
+
+        if (type.contains("TREASURE") || type.contains("BUFF")) {
+            player.addMoney(200);
+        } else if (type.contains("JAIL") || type.contains("TRAP")) {
+            player.moveTo(14);
+            player.setInJail(true);
+        } else if (type.contains("TAX")) {
+            player.deductMoney(100);
+        }
     }
 }

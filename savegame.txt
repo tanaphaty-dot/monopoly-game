@@ -1,0 +1,22 @@
+PlayerCount:2
+InitialMoney:500
+MaxTurns:20
+CurrentTurn:3
+CurrentPlayer:0
+HasRolled:true
+PendingAction:NONE
+GameOver:false
+Player:0,Player 1,600,16,true
+Player:1,Player 2,500,14,true
+City:1,-1
+City:2,0
+City:4,-1
+City:6,-1
+City:8,-1
+City:9,-1
+City:12,-1
+City:13,-1
+City:15,-1
+City:18,-1
+City:19,-1
+City:21,-1
