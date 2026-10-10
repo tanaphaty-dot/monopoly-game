@@ -79,6 +79,80 @@ public class BoardPanel extends JPanel {
             g2.setColor(Color.BLACK);
             g2.drawOval(p.x + offsetX, p.y + offsetY, 14, 14);
         }
+
+        drawCenter(g2, width, height, tileSize);
+    }
+
+    /** ลูกเต๋าตรงกลางช่องว่างของกระดาน ใช้สีขาวดำแบบช่องเดิม */
+    private void drawCenter(Graphics2D g2, int width, int height, int tileSize) {
+        int margin = 20;
+        int x = margin + tileSize;
+        int y = margin + tileSize;
+        int w = tileSize * 5;
+        int h = tileSize * 5;
+        if (w < 40 || h < 40) return;
+
+        // TODO(พีท): ตอนนี้ GameController ยังไม่มี getLastRoll() ใส่ 0 ไว้ก่อนจะได้ไม่แดง
+        // พีทเพิ่มเมธอด getLastRoll() แล้วเปลี่ยนบรรทัดล่างเป็น: int roll = controller.getLastRoll();
+        int roll = 0;
+        int die = Math.max(48, Math.min(110, Math.min(w, h) / 3));
+        int dieX = x + (w - die) / 2;
+        int dieY = y + (h - die) / 2 - 16;
+        drawDie(g2, dieX, dieY, die, roll);
+
+        g2.setColor(Color.DARK_GRAY);
+        g2.setFont(FontUtil.getThaiFontBold(18f));
+        String label = roll > 0 ? "ทอยได้ " + roll : "ทอยลูกเต๋า";
+        FontMetrics fm = g2.getFontMetrics();
+        g2.drawString(label, x + (w - fm.stringWidth(label)) / 2, dieY + die + 28);
+
+        if (controller.isGameOver()) {
+            Player winner = controller.getWinner();
+            String line = winner == null ? "เกมจบแล้ว" : "ผู้ชนะ: " + winner.getName();
+            g2.setFont(FontUtil.getThaiFont(14f));
+            fm = g2.getFontMetrics();
+            g2.drawString(line, x + (w - fm.stringWidth(line)) / 2, dieY + die + 50);
+        }
+    }
+
+    private void drawDie(Graphics2D g2, int x, int y, int size, int roll) {
+        g2.setColor(Color.WHITE);
+        g2.fillRoundRect(x, y, size, size, 16, 16);
+        g2.setColor(Color.BLACK);
+        g2.setStroke(new BasicStroke(2f));
+        g2.drawRoundRect(x, y, size, size, 16, 16);
+        if (roll < 1 || roll > 6) return;
+
+        int pip = Math.max(8, size / 7);
+        int margin = size / 4;
+        int[] xs = { x + margin, x + size / 2, x + size - margin };
+        int[] ys = { y + margin, y + size / 2, y + size - margin };
+        boolean[][] dots = pipMap(roll);
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                if (!dots[row][col]) continue;
+                g2.fillOval(xs[col] - pip / 2, ys[row] - pip / 2, pip, pip);
+            }
+        }
+    }
+
+    private static boolean[][] pipMap(int n) {
+        boolean[][] map = new boolean[3][3];
+        switch (n) {
+            case 1: map[1][1] = true; break;
+            case 2: map[0][0] = true; map[2][2] = true; break;
+            case 3: map[0][0] = true; map[1][1] = true; map[2][2] = true; break;
+            case 4: map[0][0] = true; map[0][2] = true; map[2][0] = true; map[2][2] = true; break;
+            case 5:
+                map[0][0] = true; map[0][2] = true; map[1][1] = true;
+                map[2][0] = true; map[2][2] = true;
+                break;
+            default:
+                map[0][0] = true; map[1][0] = true; map[2][0] = true;
+                map[0][2] = true; map[1][2] = true; map[2][2] = true;
+                break;
+        }
+        return map;
     }
 
     // คำนวณพิกัด X, Y ของช่องกระดานวนรอบขอบเป็นสี่เหลี่ยม (ล่าง -> ซ้าย -> บน -> ขวา)

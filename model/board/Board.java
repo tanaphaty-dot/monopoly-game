@@ -69,8 +69,8 @@ public class Board {
     public List<Tile> getAllTiles() {
         return tiles;
     }
-    //เพิ่มมาใหม่
-     /** คืนเมืองทั้งหมดของผู้เล่นที่ล้มละลาย ให้กลายเป็นเมืองว่าง */
+
+    /** คืนเมืองทั้งหมดของผู้เล่นที่ล้มละลาย ให้กลายเป็นเมืองว่าง */
     public void releaseCitiesOf(Player player) {
         if (player == null) return;
         for (Tile tile : tiles) {
@@ -79,7 +79,7 @@ public class Board {
             }
         }
     }
-    // BFS: นับจำนวนเมืองที่ติดกันของเจ้าของคนเดียวกัน
+
 
     //รับ ID ช่องที่ตก และ ผู้เล่นเจ้าของเมือง
     public int calculateConnectedTerritory(int startTileId, Player targetOwner) {
