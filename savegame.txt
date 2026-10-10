@@ -1,22 +1,22 @@
 PlayerCount:2
 InitialMoney:1500
 MaxTurns:20
-CurrentTurn:8
-CurrentPlayer:0
-HasRolled:true
-PendingAction:BUY_CITY
+CurrentTurn:1
+CurrentPlayer:1
+HasRolled:false
+PendingAction:NONE
 GameOver:false
-Player:0,Player 1,1300,13,true
-Player:1,Player 2,1400,15,true
-City:1,0
+Player:0,Player 1,1700,5,false
+Player:1,Player 2,1500,0,false
+City:1,-1
 City:2,-1
 City:4,-1
 City:6,-1
-City:8,0
+City:8,-1
 City:9,-1
-City:12,1
+City:12,-1
 City:13,-1
-City:15,1
+City:15,-1
 City:18,-1
-City:19,0
+City:19,-1
 City:21,-1
