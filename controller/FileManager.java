@@ -1,9 +1,8 @@
 package controller;
-
 import java.io.*;
 
 /**
- * จัดการการอ่านและบันทึกไฟล์สถานะเกม
+ * จัดการการอ่านและบันทึกไฟล์สถานะเกม savegame.txt
  * @author พีท (feature/ui-system)
  */
 public class FileManager {

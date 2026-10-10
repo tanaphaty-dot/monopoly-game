@@ -4,7 +4,7 @@
 
 | สมาชิก | ฟังก์ชันการทำงาน & หน้า GUI ที่รับผิดชอบ | ออกแบบ Class Diagram และพัฒนา Class |
 | :--- | :--- | :--- |
-| **ฟิล์ม** | **ระบบกระดาน & อาณาเขต**<br>• ออกแบบและคำนวณกราฟกระดาน 24 ช่อง <br>• พัฒนาอัลกอริทึมหาอาณาเขตเมืองต่อเนื่อง | `Board`<br>`Tile`<br>`CityTile`<br>`EventTile`<br>`TileFactory`<br>`UI` |
+| **ฟิล์ม** | **ระบบกระดาน & อาณาเขต**<br>• ออกแบบและคำนวณกราฟกระดาน 24 ช่อง <br>• พัฒนาอัลกอริทึมหาอาณาเขตเมืองต่อเนื่อง | `Board`<br>`Tile`<br>`CityTile`<br>`EventTile`<br>`TileFactory` |
 | **เดียร์** | **ระบบผู้เล่น & สถานะ**<br>• จัดการข้อมูลสถานะผู้เล่น เงิน และการเคลื่อนที่<br>• สุ่มลูกเต๋า ระบบการ์ด และจัดการแอ็กชันค้าง | `Player`<br>`Dice`<br>`Card`<br>`PendingAction` |
 | **เก๋า** | **ระบบการต่อสู้ & เหตุการณ์**<br>• คำนวณสงครามยึดเมือง เกราะป้องกัน และค่าปรับ<br>• ประมวลผลเอฟเฟกต์การ์ดเหตุการณ์สุ่ม | `SiegeSystem`<br>`BattleResult`<br>`EventCard` |
 | **พีท** | **ตัวควบคุมเกม, ไฟล์ & หน้าจอ UI**<br>• คุม Game Controller, Turn Loop และ State Management<br>• ระบบบันทึก/โหลดไฟล์ (savegame.txt) และ UI Swing | `GameController`<br>`FileManager`<br>`GameSettings`<br>`GameObserver`<br>`UI` |

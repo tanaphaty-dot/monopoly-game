@@ -8,6 +8,7 @@ import pattern.GameObserver;
 
 /**
  * ควบคุมวงรอบของเกม Monopoly และการคำนวณกฎกติกา
+ * เทิร์น ทอยเต๋า ซื้อ ตีเมือง จ่ายค่าผ่านทาง จบเกม เซฟ/โหลด
  * @author พีท 
  */
 public class GameController {

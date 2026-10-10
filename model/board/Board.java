@@ -35,8 +35,19 @@ public class Board {
                 tiles.add(TileFactory.createCityTile(i, "Mine " + i, 300, 60, "Yellow"));
             } else if (i == 18 || i == 19 || i == 21) {
                 tiles.add(TileFactory.createCityTile(i, "Capital " + i, 400, 80, "Red"));
+            } else if (i == 0) {
+                // ช่องพิเศษ 5 ช่อง ที่เหลือที่ไม่ใช่เมืองเป็นช่องจั่วการ์ด
+                tiles.add(TileFactory.createStartTile(i));
+            } else if (i == 5) {
+                tiles.add(TileFactory.createCampTile(i));
+            } else if (i == 11) {
+                tiles.add(TileFactory.createWatchtowerTile(i));
+            } else if (i == 14) {
+                tiles.add(TileFactory.createWarJailTile(i));
+            } else if (i == 17) {
+                tiles.add(TileFactory.createTrainingGroundTile(i));
             } else {
-                tiles.add(TileFactory.createEventTile(i, "Event " + i, "CHANCE"));
+                tiles.add(TileFactory.createEventTile(i, "Event " + i, EventTile.CHANCE));
             }
 
             adjacencyMap.put(i, new ArrayList<>());
@@ -58,9 +69,17 @@ public class Board {
     public List<Tile> getAllTiles() {
         return tiles;
     }
-
-    // NOTICE (ถึง เก๋า & เดียร์): อัลกอริทึม BFS สำหรับคำนวณจำนวนเมืองที่เชื่อมต่อกัน
-    // ใช้ Object targetOwner ชั่วคราว ฝากเดียร์กับเก๋าช่วยแก้ เป็น Player targetOwner
+    //เพิ่มมาใหม่
+     /** คืนเมืองทั้งหมดของผู้เล่นที่ล้มละลาย ให้กลายเป็นเมืองว่าง */
+    public void releaseCitiesOf(Player player) {
+        if (player == null) return;
+        for (Tile tile : tiles) {
+            if (tile instanceof CityTile && ((CityTile) tile).getOwner() == player) {
+                ((CityTile) tile).setOwner(null);
+            }
+        }
+    }
+    // BFS: นับจำนวนเมืองที่ติดกันของเจ้าของคนเดียวกัน
 
     //รับ ID ช่องที่ตก และ ผู้เล่นเจ้าของเมือง
     public int calculateConnectedTerritory(int startTileId, Player targetOwner) {

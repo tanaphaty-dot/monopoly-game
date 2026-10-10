@@ -4,10 +4,14 @@ import javax.swing.*;
 import java.awt.*;
 import controller.GameController;
 import model.entity.PendingAction;
+import model.entity.Player;
 
 /**
- * รวมปุ่มทอยเต๋า ปุ่มยืนยัน/ปฏิเสธแอ็กชัน และปุ่มเปลี่ยนเทิร์น
- * @author พีท (feature/ui-system)
+ * ปุ่มล่างจอ
+ * ทอย / จั่วการ์ด / จ่ายประกัน / จบเทิร์น
+ * ซื้อหรือบุก / ปฏิเสธ / บันทึก / ออก
+ *
+ * @author พีท/ฟิล์ม (feature/ui-system)
  */
 public class ActionControlPanel extends JPanel {
     private final GameController controller;
