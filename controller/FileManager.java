@@ -2,7 +2,7 @@ package controller;
 import java.io.*;
 
 /**
- * จัดการการอ่านและบันทึกไฟล์สถานะเกม savegame.txt
+ * จัดการการอ่านและบันทึกไฟล์สถานะเกม
  * @author พีท (feature/ui-system)
  */
 public class FileManager {

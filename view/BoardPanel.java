@@ -92,9 +92,7 @@ public class BoardPanel extends JPanel {
         int h = tileSize * 5;
         if (w < 40 || h < 40) return;
 
-        // TODO(พีท): ตอนนี้ GameController ยังไม่มี getLastRoll() ใส่ 0 ไว้ก่อนจะได้ไม่แดง
-        // พีทเพิ่มเมธอด getLastRoll() แล้วเปลี่ยนบรรทัดล่างเป็น: int roll = controller.getLastRoll();
-        int roll = 0;
+        int roll = controller.getLastRoll();
         int die = Math.max(48, Math.min(110, Math.min(w, h) / 3));
         int dieX = x + (w - die) / 2;
         int dieY = y + (h - die) / 2 - 16;

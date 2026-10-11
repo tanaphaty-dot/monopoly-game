@@ -11,13 +11,16 @@ import model.entity.Player;
  * ทอย / จั่วการ์ด / จ่ายประกัน / จบเทิร์น
  * ซื้อหรือบุก / ปฏิเสธ / บันทึก / ออก
  *
- * @author พีท/ฟิล์ม (feature/ui-system)
+ * @author พีท (feature/ui-system)
  */
 public class ActionControlPanel extends JPanel {
     private final GameController controller;
     private final MainUI mainUI;
 
+    private final JLabel hintLabel;
     private final JButton btnRoll;
+    private final JButton btnDraw;
+    private final JButton btnBail;
     private final JButton btnConfirm;
     private final JButton btnRefuse;
     private final JButton btnEndTurn;
@@ -28,75 +31,104 @@ public class ActionControlPanel extends JPanel {
         this.controller = controller;
         this.mainUI = mainUI;
 
-        setLayout(new GridLayout(3, 2, 6, 6)); // จัดวางปุ่มเป็นตาราง 3 แถว 2 คอลัมน์
+        setLayout(new BorderLayout(0, 6));
 
-        // 1. สร้างปุ่มคำสั่งต่างๆ
+        hintLabel = new JLabel(" ");
+        hintLabel.setFont(FontUtil.getThaiFont(13f));
+        add(hintLabel, BorderLayout.NORTH);
+
+        JPanel buttons = new JPanel(new GridLayout(2, 4, 6, 6));
         btnRoll = new JButton("ทอยลูกเต๋า");
-        btnConfirm = new JButton("ตกลง / บุกยึด");
-        btnRefuse = new JButton("ปฏิเสธ / จ่ายค่าเช่า");
+        btnDraw = new JButton("จั่วการ์ด");
+        btnBail = new JButton("จ่ายประกัน " + GameController.JAIL_BAIL);
         btnEndTurn = new JButton("จบเทิร์น");
+        btnConfirm = new JButton("ตกลง");
+        btnRefuse = new JButton("ปฏิเสธ");
         btnSave = new JButton("บันทึกเกม");
-        btnExit = new JButton("ออกเกม (Pause & Save)");
+        btnExit = new JButton("ออกเกม");
 
-        // 2. ตั้งค่า Font ภาษาไทยให้ปุ่มกด
         Font font = FontUtil.getThaiFont(12f);
-        btnRoll.setFont(font);
-        btnConfirm.setFont(font);
-        btnRefuse.setFont(font);
-        btnEndTurn.setFont(font);
-        btnSave.setFont(font);
-        btnExit.setFont(font);
+        for (JButton button : new JButton[]{
+            btnRoll, btnDraw, btnBail, btnEndTurn, btnConfirm, btnRefuse, btnSave, btnExit
+        }) {
+            button.setFont(font);
+            buttons.add(button);
+        }
+        add(buttons, BorderLayout.CENTER);
 
-        // 3. เชื่อม Event ปุ่มกดเข้ากับ GameController
         btnRoll.addActionListener(e -> controller.rollDice());
+        btnDraw.addActionListener(e -> controller.drawPendingCard());
+        btnBail.addActionListener(e -> controller.payBail());
         btnConfirm.addActionListener(e -> controller.processPendingAction(true));
         btnRefuse.addActionListener(e -> controller.processPendingAction(false));
         btnEndTurn.addActionListener(e -> controller.endTurn());
         btnSave.addActionListener(e -> controller.saveGame());
-
-        // ปุ่มออกเกม: เซฟสถานะแล้วพักกลับไปหน้าเมนูหลัก
-        btnExit.addActionListener(e -> {
-        // ห่อข้อความด้วย HTML และระบุ Font 'Tahoma' เพื่อป้องกันภาษาไทยกลายเป็นกล่องสี่เหลี่ยม
-        String message = "<html><font face='Tahoma' size='4'>ระบบจะบันทึกเกม ณ จุดนี้ไว้ก่อนออก แล้วกลับไปหน้าเมนูหลัก ยืนยันหรือไม่?</font></html>";
-        int confirm = JOptionPane.showConfirmDialog(this,message,"ออกเกม / บันทึกและพัก",JOptionPane.YES_NO_OPTION);
-            if (confirm == JOptionPane.YES_OPTION) {
-        mainUI.pauseAndReturnToMenu();
-        }
-        });
-
-        // 4. เพิ่มปุ่มลงใน Panel
-        add(btnRoll);
-        add(btnEndTurn);
-        add(btnConfirm);
-        add(btnRefuse);
-        add(btnSave);
-        add(btnExit);
+        btnExit.addActionListener(e -> confirmExit());
     }
 
-    // เปิด-ปิดการใช้งานปุ่มกดให้สอดคล้องกับสถานะของเกม
+    private void confirmExit() {
+        String message = "<html><font face='Tahoma' size='4'>ระบบจะบันทึกเกม ณ จุดนี้ไว้ก่อนออก แล้วกลับไปหน้าเมนูหลัก ยืนยันหรือไม่?</font></html>";
+        int confirm = JOptionPane.showConfirmDialog(
+            this, message, "ออกเกม / บันทึกและพัก", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            mainUI.pauseAndReturnToMenu();
+        }
+    }
+
     public void updateControlState() {
         boolean hasRolled = controller.hasRolledThisTurn();
         PendingAction pending = controller.getPendingAction();
         boolean isGameOver = controller.isGameOver();
+        Player current = controller.getCurrentPlayer();
 
-        // ถ้าเกมจบแล้ว ปิดปุ่มควบคุมหลักทั้งหมด
         if (isGameOver) {
             btnRoll.setEnabled(false);
+            btnDraw.setEnabled(false);
+            btnBail.setEnabled(false);
             btnConfirm.setEnabled(false);
             btnRefuse.setEnabled(false);
             btnEndTurn.setEnabled(false);
+            Player winner = controller.getWinner();
+            hintLabel.setText(winner == null ? "เกมจบแล้ว" : "เกมจบแล้ว ผู้ชนะคือ " + winner.getName());
             return;
         }
 
-        // ปุ่มทอยเต๋า: เปิดเฉพาะตอนยังไม่ได้ทอยในเทิร์นนั้น
         btnRoll.setEnabled(!hasRolled);
+        btnDraw.setEnabled(pending == PendingAction.DRAW_CARD);
+        btnBail.setEnabled(current.isInJail() && !hasRolled);
 
-        // ปุ่มแอ็กชัน: เปิดเมื่อมี Action รอยืนยัน (เช่น ตกเมือง)
-        boolean hasAction = (pending != PendingAction.NONE);
-        btnConfirm.setEnabled(hasAction);
-        btnRefuse.setEnabled(hasAction);
+        boolean chooseCity = pending == PendingAction.BUY_CITY
+            || pending == PendingAction.SIEGE_OR_PAY
+            || pending == PendingAction.PAY_RENT;
+        btnConfirm.setEnabled(chooseCity);
+        btnRefuse.setEnabled(chooseCity);
+        btnEndTurn.setEnabled(hasRolled && pending == PendingAction.NONE);
 
-        // ปุ่มจบเทิร์น: เปิดเมื่อทอยเต๋าแล้วและจัดการ Action เรียบร้อยแล้วเท่านั้น
-        btnEndTurn.setEnabled(hasRolled && !hasAction);
+        if (pending == PendingAction.BUY_CITY) {
+            btnConfirm.setText("ซื้อเมือง");
+            btnRefuse.setText("ไม่ซื้อ");
+            hintLabel.setText("เมืองว่าง: กดซื้อเมือง หรือไม่ซื้อ");
+        } else if (pending == PendingAction.SIEGE_OR_PAY || pending == PendingAction.PAY_RENT) {
+            btnConfirm.setText("บุกยึด");
+            btnRefuse.setText("จ่ายค่าเช่า");
+            hintLabel.setText("เมืองคนอื่น: กดบุกยึด หรือจ่ายค่าเช่า");
+        } else if (pending == PendingAction.DRAW_CARD) {
+            btnConfirm.setText("ตกลง");
+            btnRefuse.setText("ปฏิเสธ");
+            hintLabel.setText("ตกช่องการ์ด: กดจั่วการ์ด (ข้ามไม่ได้)");
+        } else if (current.isInJail() && !hasRolled) {
+            btnConfirm.setText("ตกลง");
+            btnRefuse.setText("ปฏิเสธ");
+            hintLabel.setText("ติดคุก: ทอยได้ " + GameController.JAIL_ESCAPE_ROLL
+                + " ขึ้นไปเพื่อออก หรือจ่ายประกัน " + GameController.JAIL_BAIL);
+        } else if (!hasRolled) {
+            btnConfirm.setText("ตกลง");
+            btnRefuse.setText("ปฏิเสธ");
+            hintLabel.setText("กดทอยลูกเต๋า");
+        } else {
+            btnConfirm.setText("ตกลง");
+            btnRefuse.setText("ปฏิเสธ");
+            hintLabel.setText("จัดการครบแล้ว กดจบเทิร์น");
+        }
     }
 }

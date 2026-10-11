@@ -25,7 +25,8 @@ public class MainUI extends JFrame {
         
         // ดักจับปุ่มกากบาทปิดหน้าต่างเพื่อถามเซฟก่อนออก
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
-        setSize(1100, 750);
+        // กว้างขึ้นนิดหน่อย เพราะแผงสถานะย้ายไปฝั่งซ้าย
+        setSize(1240, 800);
         setLocationRelativeTo(null); // แสดงหน้าต่างตรงกลางจอ
 
         cardLayout = new CardLayout();

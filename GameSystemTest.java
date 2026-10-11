@@ -24,6 +24,7 @@ public class GameSystemTest {
         testSiegeSystemCombat();           // เก๋า (SiegeSystem)
         testEventCardEffects();            // เก๋า (EventCard)
         testGameControllerAndFileFlow();   // พีท (GameController & Save/Load)
+        testEventSystem();                 // ระบบ Event ที่เพิ่มเข้ามา
 
         // สรุปผลการทดสอบ
         System.out.println("\n==================================================");
@@ -179,13 +180,24 @@ public class GameSystemTest {
         // แก้ไขจุดนี้: ตรวจเช็ก PendingAction ให้ยืดหยุ่นตามประเภทช่องที่เดินไปตกจริง
         Tile landedTile = controller.getBoard().getTile(currentPos);
         if (landedTile instanceof CityTile) {
-            assertTrue(controller.getPendingAction() != PendingAction.NONE, "PendingAction should be set on CityTile");
+            CityTile city = (CityTile) landedTile;
+            if (city.getOwner() == null || city.getOwner() != controller.getCurrentPlayer()) {
+                assertTrue(controller.getPendingAction() != PendingAction.NONE, "PendingAction should be set on an unowned or enemy city");
+            } else {
+                assertTrue(controller.getPendingAction() == PendingAction.NONE, "Own city should not wait for an action");
+            }
+        } else if (landedTile instanceof EventTile && ((EventTile) landedTile).isCardTile()) {
+            assertTrue(controller.getPendingAction() == PendingAction.DRAW_CARD, "Card tile should wait for DRAW_CARD");
         } else {
-            assertTrue(controller.getPendingAction() == PendingAction.NONE, "PendingAction should be NONE on EventTile");
+            assertTrue(controller.getPendingAction() == PendingAction.NONE, "Special tile should resolve immediately");
         }
 
         // Check 5.3: เคลียร์ Action ค้างและเปลี่ยนเทิร์น
-        controller.processPendingAction(false); // ปฏิเสธแอ็กชัน
+        // การ์ดเดินฟรีอาจไปตกช่องที่ต้องตอบอีกครั้ง จึงเคลียร์เป็นลูปสั้นๆ
+        int guard = 0;
+        while (controller.getPendingAction() != PendingAction.NONE && guard++ < 8) {
+            controller.processPendingAction(false);
+        }
         assertTrue(controller.getPendingAction() == PendingAction.NONE, "PendingAction should reset to NONE after processPendingAction()");
 
         controller.endTurn();
@@ -195,6 +207,94 @@ public class GameSystemTest {
         controller.saveGame();
         String savedData = FileManager.loadGame();
         assertTrue(savedData != null && savedData.contains("CurrentTurn:"), "FileManager should save and load game state correctly");
+        System.out.println();
+    }
+
+    // ----------------------------------------------------------------
+    // 6. TEST MODULE: ระบบ Event ที่เพิ่ม (การ์ด ช่องพิเศษ โบนัสบุก เซฟ)
+    // ----------------------------------------------------------------
+    private static void testEventSystem() {
+        System.out.println("[TEST GROUP 6] Full Event System");
+        Board board = new Board();
+
+        EventTile start = (EventTile) board.getTile(0);
+        EventTile camp = (EventTile) board.getTile(5);
+        EventTile watch = (EventTile) board.getTile(11);
+        EventTile jail = (EventTile) board.getTile(14);
+        EventTile train = (EventTile) board.getTile(17);
+        EventTile chance = (EventTile) board.getTile(3);
+        assertTrue(EventTile.START.equals(start.getEventType()) && !start.isCardTile(), "Tile 0 is Start");
+        assertTrue(EventTile.CAMP.equals(camp.getEventType()) && !camp.isCardTile(), "Tile 5 is Camp");
+        assertTrue(EventTile.WATCHTOWER.equals(watch.getEventType()) && !watch.isCardTile(), "Tile 11 is Watchtower");
+        assertTrue(EventTile.WAR_JAIL.equals(jail.getEventType()) && !jail.isCardTile(), "Tile 14 is War Jail");
+        assertTrue(EventTile.TRAINING_GROUND.equals(train.getEventType()) && !train.isCardTile(), "Tile 17 is Training Ground");
+        assertTrue(chance.isCardTile(), "Tile 3 is still a card tile");
+
+        java.util.List<Card> deck = EventCard.createDeck();
+        assertTrue(deck.size() == EventCard.DECK_SIZE, "Deck should have 8 cards");
+
+        Player rich = new Player(1, "Rich", 500);
+        EventCard.applyEffect(EventCard.cardOfType(EventCard.TREASURE), rich, board);
+        assertTrue(rich.getMoney() == 700, "Treasure card adds 200");
+        EventCard.applyEffect(EventCard.cardOfType(EventCard.SUPPLY_DROP), rich, board);
+        assertTrue(rich.getMoney() == 800, "Supply card adds 100");
+        EventCard.applyEffect(EventCard.cardOfType(EventCard.TAX_PENALTY), rich, board);
+        assertTrue(rich.getMoney() == 700, "Tax card subtracts 100 when the player can pay");
+
+        Player poor = new Player(2, "Poor", 50);
+        CityTile owned = (CityTile) board.getTile(1);
+        owned.setOwner(poor);
+        EventCard.applyEffect(EventCard.cardOfType(EventCard.TAX_PENALTY), poor, board);
+        assertTrue(poor.getMoney() == 0 && poor.isBankrupt() && owned.getOwner() == null,
+            "Unpaid tax bankrupts the player and releases their cities");
+
+        Player walker = new Player(3, "Walker", 1000);
+        walker.moveTo(0);
+        EventCard.applyEffect(EventCard.cardOfType(EventCard.FREE_MOVE), walker, board);
+        assertTrue(walker.getCurrentTileId() == EventCard.FREE_MOVE_STEPS, "Free move walks 3 tiles");
+
+        EventCard.applyEffect(EventCard.cardOfType(EventCard.BUFF_DEFENSE), walker, board);
+        EventCard.applyEffect(EventCard.cardOfType(EventCard.ATTACK_DISCOUNT), walker, board);
+        EventCard.applyEffect(EventCard.cardOfType(EventCard.COMBAT_DRILL), walker, board);
+        assertTrue(walker.hasCampDefense() && walker.hasSiegeDiscount() && walker.hasTrainingBoost(),
+            "Defense, discount, and drill cards set one-shot flags");
+
+        // เกราะค่ายทำให้ค่าบุกแพงขึ้น เงินไม่พอแล้วโบนัสต้องยังอยู่
+        Player attacker = new Player(4, "Attacker", 100);
+        Player defender = new Player(5, "Defender", 500);
+        CityTile city = (CityTile) board.getTile(6);
+        city.setOwner(defender);
+        defender.setCampDefense(true);
+        BattleResult blocked = SiegeSystem.resolveSiege(attacker, defender, city, board);
+        assertTrue(!blocked.isAttackerWon() && defender.hasCampDefense() && city.getOwner() == defender,
+            "Camp defense raises the siege cost and is kept when the attacker cannot pay");
+
+        Player richAttacker = new Player(6, "RichAttacker", 500);
+        richAttacker.setTrainingBoost(true);
+        richAttacker.setSiegeDiscount(true);
+        BattleResult captured = SiegeSystem.resolveSiege(richAttacker, defender, city, board);
+        assertTrue(captured.isAttackerWon() && city.getOwner() == richAttacker, "Discount and training can bring the cost down enough to capture");
+        assertTrue(!richAttacker.hasTrainingBoost() && !richAttacker.hasSiegeDiscount() && !defender.hasCampDefense(),
+            "Buffs are consumed only when the siege is actually paid");
+
+        // เซฟต้องจำคุก โบนัส และการ์ดในมือ
+        GameSetting settings = new GameSetting();
+        settings.setPlayerCount(2);
+        settings.setInitialMoney(1500);
+        GameController gc = new GameController(settings);
+        Player saver = gc.getCurrentPlayer();
+        saver.setInJail(true);
+        saver.setJailTurns(2);
+        saver.setCampDefense(true);
+        saver.addCard(EventCard.cardOfType(EventCard.TREASURE));
+        gc.saveGame();
+        GameController loaded = GameController.loadGame();
+        Player loadedPlayer = loaded.getPlayers().get(0);
+        assertTrue(loadedPlayer.isInJail() && loadedPlayer.getJailTurns() == 2 && loadedPlayer.hasCampDefense(),
+            "Save/Load keeps jail turns and camp defense");
+        assertTrue(loadedPlayer.getCards().size() == 1
+            && EventCard.TREASURE.equals(loadedPlayer.getCards().get(0).getType()),
+            "Save/Load keeps cards in hand");
         System.out.println();
     }
 }
