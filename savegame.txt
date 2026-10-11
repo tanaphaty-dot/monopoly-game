@@ -6,7 +6,7 @@ CurrentPlayer:1
 HasRolled:false
 PendingAction:NONE
 GameOver:false
-Player:0,Player 1,1700,5,false
+Player:0,Player 1,1500,4,false
 Player:1,Player 2,1500,0,false
 City:1,-1
 City:2,-1

@@ -15,6 +15,10 @@ public class Player {
     private int money;
     private int currentTileId;
     private boolean inJail;
+    private int jailTurns;          // ทอยหนีคุกไปแล้วกี่ครั้ง
+    private boolean campDefense;    // เกราะค่าย ใช้ครั้งเดียวตอนถูกบุก
+    private boolean trainingBoost;  // โบนัสซ้อม ใช้ครั้งเดียวตอนไปบุก
+    private boolean siegeDiscount;  // ส่วนลดการ์ด ใช้ครั้งเดียวตอนไปบุก
     private final List<Card> cards;
 
     public Player(int id, String name, int initialMoney) {
@@ -23,6 +27,10 @@ public class Player {
         this.money = initialMoney;
         this.currentTileId = 0; // เริ่มต้นที่จุด START (ช่อง 0)
         this.inJail = false;
+        this.jailTurns = 0;
+        this.campDefense = false;
+        this.trainingBoost = false;
+        this.siegeDiscount = false;
         this.cards = new ArrayList<>();
     }
 
@@ -31,6 +39,10 @@ public class Player {
     public int getMoney() { return money; } //เชื่อมกับเก๋า จะดึง player.getMoney() ไปเช็กว่าผู้เล่นมีเงินพอจ่ายค่าปรับ/ค่าเช่ามั้ย
     public int getCurrentTileId() { return currentTileId; }
     public boolean isInJail() { return inJail; }
+    public int getJailTurns() { return jailTurns; }
+    public boolean hasCampDefense() { return campDefense; }
+    public boolean hasTrainingBoost() { return trainingBoost; }
+    public boolean hasSiegeDiscount() { return siegeDiscount; }
     public List<Card> getCards() { return cards; }
 
     // --- System Actions ---
@@ -58,10 +70,57 @@ public class Player {
 
     public void setInJail(boolean inJail) {
         this.inJail = inJail;
+        this.jailTurns = 0;
+    }
+
+    public void setJailTurns(int jailTurns) {
+        this.jailTurns = jailTurns;
+    }
+
+    public void setCampDefense(boolean campDefense) { this.campDefense = campDefense; }
+
+    /** คืน true ครั้งเดียว แล้วล้างธงทิ้ง */
+    public boolean consumeCampDefense() {
+        if (!campDefense) return false;
+        campDefense = false;
+        return true;
+    }
+
+    public void setTrainingBoost(boolean trainingBoost) { this.trainingBoost = trainingBoost; }
+
+    public boolean consumeTrainingBoost() {
+        if (!trainingBoost) return false;
+        trainingBoost = false;
+        return true;
+    }
+
+    public void setSiegeDiscount(boolean siegeDiscount) { this.siegeDiscount = siegeDiscount; }
+
+    public boolean consumeSiegeDiscount() {
+        if (!siegeDiscount) return false;
+        siegeDiscount = false;
+        return true;
+    }
+
+    /**
+     * จ่ายเงินให้ผู้เล่นอีกคน หรือจ่ายธนาคารถ้าระบุ creditor เป็น null
+     * เงินพอ: หักเต็มจำนวน คืน true
+     * เงินไม่พอ: เหลือ 0 แล้วล้มละลาย คืน false
+     */
+    public boolean payTo(Player creditor, int amount) {
+        if (amount <= 0) return true;
+        if (this.money >= amount) {
+            this.money -= amount;
+            if (creditor != null) creditor.addMoney(amount);
+            return true;
+        }
+        if (creditor != null && this.money > 0) creditor.addMoney(this.money);
+        this.money = 0;
+        return false;
     }
 
     public void addCard(Card card) {
-        this.cards.add(card);
+        if (card != null) this.cards.add(card);
     }
 
     public void removeCard(Card card) {
