@@ -6,7 +6,10 @@ import controller.GameController;
 import pattern.GameObserver;
 
 /**
- * หน้าจอเล่นเกมหลักที่รวมกระดาน, ข้อมูลผู้เล่น, ปุ่มสั่งการ และ Log
+ * หน้าเล่นเกม
+ * ซ้าย = สถานะผู้เล่น, กลาง = กระดาน, ขวา = บันทึก, ล่าง = ปุ่ม
+ * หน้าตายังเป็นกรอบกับฟอนต์เดิม แค่ย้ายตำแหน่งแผง
+ *
  * @author พีท (feature/ui-system)
  */
 public class GamePanel extends JPanel implements GameObserver {
@@ -18,39 +21,38 @@ public class GamePanel extends JPanel implements GameObserver {
 
     public GamePanel(MainUI mainUI, GameController controller) {
         this.controller = controller;
-        this.controller.addObserver(this); // ลงทะเบียนเป็น Observer คอยรับการแจ้งเตือน
+        controller.addObserver(this);
 
         setLayout(new BorderLayout(10, 10));
         setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        // 1. สร้าง Panel ย่อยทั้งหมด
-        boardPanel = new BoardPanel(controller);
         statusPanel = new PlayerStatusPanel(controller);
-        controlPanel = new ActionControlPanel(controller, mainUI);
+        JPanel leftPanel = new JPanel(new BorderLayout());
+        leftPanel.setPreferredSize(new Dimension(280, 0));
+        leftPanel.add(statusPanel, BorderLayout.CENTER);
+
+        boardPanel = new BoardPanel(controller);
+
         logPanel = new GameLogPanel(controller);
-
-        // 2. วาง BoardPanel ไว้ตรงกลาง
-        add(boardPanel, BorderLayout.CENTER);
-
-        // 3. รวม Panel ข้อมูล, Log, และปุ่มกดไว้ฝั่งขวา
-        JPanel rightPanel = new JPanel(new BorderLayout(10, 10));
-        rightPanel.setPreferredSize(new Dimension(360, 0));
-        rightPanel.add(statusPanel, BorderLayout.NORTH);
+        JPanel rightPanel = new JPanel(new BorderLayout());
+        rightPanel.setPreferredSize(new Dimension(300, 0));
         rightPanel.add(logPanel, BorderLayout.CENTER);
-        rightPanel.add(controlPanel, BorderLayout.SOUTH);
 
+        controlPanel = new ActionControlPanel(controller, mainUI);
+
+        add(leftPanel, BorderLayout.WEST);
+        add(boardPanel, BorderLayout.CENTER);
         add(rightPanel, BorderLayout.EAST);
+        add(controlPanel, BorderLayout.SOUTH);
 
-        // ซิงค์สถานะหน้าจอครั้งแรก
         onGameStateChanged();
     }
 
-    // เมื่อข้อมูลในเกมเปลี่ยนแปลง ให้สั่งสั่งงานทุก Panel ย่อยให้อัปเดต
     @Override
     public void onGameStateChanged() {
-        boardPanel.repaint();              // วาดกระดานและตัวผู้เล่นใหม่
-        statusPanel.updateStatus();        // อัปเดตยอดเงินและคิวผู้เล่น
-        controlPanel.updateControlState(); // เปิด-ปิดปุ่มตามสิทธิ์
-        logPanel.appendLog();              // แสดง Log เหตุการณ์ล่าสุด
+        boardPanel.repaint();
+        statusPanel.updateStatus();
+        controlPanel.updateControlState();
+        logPanel.appendLog();
     }
 }

@@ -29,6 +29,14 @@ public class GameController {
     private boolean hasRolledThisTurn;
     private boolean gameOver;
     private Player winner;
+    private int lastRoll;
+
+    /** ทอยได้เท่านี้ขึ้นไปถึงออกจากคุก */
+    public static final int JAIL_ESCAPE_ROLL = 5;
+    /** ทอยหนีคุกครบกี่ครั้งแล้วออกเอง */
+    public static final int JAIL_MAX_TRIES = 3;
+    /** จ่ายประกันออกจากคุก เงินไม่พอแค่จ่ายไม่ได้ ไม่ล้มละลาย */
+    public static final int JAIL_BAIL = 100;
 
     public GameController(GameSetting settings) {
         this.settings = settings;
@@ -41,6 +49,7 @@ public class GameController {
         this.totalTurnsPlayed = 1;
         this.hasRolledThisTurn = false;
         this.gameOver = false;
+        this.lastRoll = 0;
         this.lastGameLog = "เริ่มเกมแล้ว! กำหนดเล่นสูงสุด " + settings.getMaxTurns() + " เทิร์น";
 
         for (int i = 0; i < settings.getPlayerCount(); i++) {
@@ -63,6 +72,7 @@ public class GameController {
 
     // =========================================================================
     // PART 3: ROLL DICE & MOVEMENT (การทอยเต๋าและการเดิน)
+    // ลำดับ: ติดคุก? -> เดิน -> ผ่านจุดเริ่ม? -> ดูว่าตกช่องอะไร
     // =========================================================================
     public void rollDice() {
         if (hasRolledThisTurn || gameOver) return;
@@ -75,49 +85,207 @@ public class GameController {
             return;
         }
 
+        // ติดคุกแล้วเทิร์นนี้ยังไม่เดิน ต้องทอยหนีหรือจ่ายประกัน
+        if (current.isInJail()) {
+            tryEscapeJail(current);
+            return;
+        }
+
         int roll = dice.roll();
+        lastRoll = roll;
         int oldTileId = current.getCurrentTileId();
         int newRawTileId = oldTileId + roll;
 
         hasRolledThisTurn = true;
 
-        // เช็กการเดินผ่านจุดเริ่มต้น (ช่อง 24 ขึ้นไป)
         boolean passedStart = newRawTileId >= 24;
         if (passedStart) {
-            current.addMoney(200);
+            current.addMoney(EventTile.PASS_START_BONUS);
         }
 
         current.moveTo(newRawTileId);
         Tile landedTile = board.getTile(current.getCurrentTileId());
 
-        lastGameLog = current.getName() + " ทอยเต๋าได้ " + roll + " เดินไปตกช่อง [" + landedTile.getName() + "]";
+        lastGameLog = current.getName() + " ทอยเต๋าได้ " + roll + " เดินไปตกช่อง "
+            + current.getCurrentTileId() + " [" + landedTile.getName() + "]";
         if (passedStart) {
-            lastGameLog += "\n[โบนัส] เดินผ่านจุดเริ่มต้น รับเงิน 200 บาท!";
+            lastGameLog += "\n[โบนัส] เดินผ่านจุดเริ่มต้น รับเงิน " + EventTile.PASS_START_BONUS + " บาท";
         }
 
-        // ตรวจสอบประเภทช่องที่ลง
+        resolveLanding(current);
+        checkGameOver();
+        notifyObservers();
+    }
+
+    /**
+     * ดูช่องที่ผู้เล่นยืนอยู่ตอนนี้ แล้วตั้งงานค้างหรือให้ผลช่องพิเศษ
+     * ใช้ทั้งหลังทอยเต๋า และหลังการ์ดเดินฟรี
+     */
+    private void resolveLanding(Player current) {
+        Tile landedTile = board.getTile(current.getCurrentTileId());
+
         if (landedTile instanceof CityTile) {
             CityTile city = (CityTile) landedTile;
             if (city.getOwner() == null) {
                 pendingAction = PendingAction.BUY_CITY;
-                lastGameLog += "\n-> เมืองนี้ยังไม่มีเจ้าของ (ราคา " + city.getBasePrice() + " บาท)";
+                appendLog("-> เมืองนี้ยังไม่มีเจ้าของ (ราคา " + city.getBasePrice() + " บาท)");
             } else if (city.getOwner() != current) {
                 pendingAction = PendingAction.SIEGE_OR_PAY;
-                lastGameLog += "\n-> ตกเมืองของ " + city.getOwner().getName() + " (เลือกบุกยึดหรือจ่ายค่าเช่า)";
+                appendLog("-> ตกเมืองของ " + city.getOwner().getName() + " (เลือกบุกยึดหรือจ่ายค่าเช่า)");
             } else {
                 pendingAction = PendingAction.NONE;
+                appendLog("-> เมืองของตัวเอง");
             }
-        } else if (landedTile instanceof EventTile) {
-            Card drawnCard = EventCard.getRandomCard();
-            EventCard.applyEffect(drawnCard, current, board);
-            lastGameLog += "\n[เหตุการณ์] สุ่มได้การ์ด [" + drawnCard.getTitle() + "]: " + drawnCard.getDescription();
-            pendingAction = PendingAction.NONE;
+            return;
+        }
+
+        if (landedTile instanceof EventTile && !((EventTile) landedTile).isCardTile()) {
+            applySpecialTile(current, (EventTile) landedTile);
+            return;
+        }
+
+        if (landedTile instanceof EventTile) {
+            pendingAction = PendingAction.DRAW_CARD;
+            appendLog("-> ช่องการ์ด กดจั่วการ์ด");
+            return;
+        }
+
+        pendingAction = PendingAction.NONE;
+    }
+
+    /** ผู้เล่นกดปุ่มจั่ว ระบบสุ่มให้ 1 ใบ */
+    public void drawPendingCard() {
+        drawPendingCard(EventCard.getRandomCard());
+    }
+
+    /**
+     * จั่วใบที่กำหนด (ปุ่มจั่วส่งใบสุ่มเข้ามา, เทสต์ส่งใบที่ต้องการได้)
+     * เก็บใบไว้ในมือก่อน แล้วค่อยทำผล
+     */
+    public void drawPendingCard(Card drawnCard) {
+        if (gameOver || pendingAction != PendingAction.DRAW_CARD || drawnCard == null) return;
+
+        Player current = getCurrentPlayer();
+        current.addCard(drawnCard);
+        int oldTile = current.getCurrentTileId();
+
+        EventCard.applyEffect(drawnCard, current, board);
+        lastGameLog = current.getName() + " จั่วการ์ด [" + drawnCard.getTitle() + "]: " + drawnCard.getDescription();
+
+        if (EventCard.FREE_MOVE.equals(drawnCard.getType())) {
+            // เดินฟรีอาจข้ามจุดเริ่ม ต้องให้เงินก่อน แล้วค่อยตรวจช่องใหม่
+            if (oldTile + EventCard.FREE_MOVE_STEPS >= 24) {
+                current.addMoney(EventTile.PASS_START_BONUS);
+                appendLog("[โบนัส] เดินฟรีผ่านจุดเริ่ม รับเงิน " + EventTile.PASS_START_BONUS + " บาท");
+            }
+            Tile now = board.getTile(current.getCurrentTileId());
+            appendLog("เดินฟรีไปช่อง " + current.getCurrentTileId() + " [" + now.getName() + "]");
+            resolveLanding(current);
         } else {
             pendingAction = PendingAction.NONE;
+            if (current.isBankrupt()) {
+                appendLog(current.getName() + " จ่ายไม่ไหว ล้มละลายและเสียเมืองทั้งหมด");
+            }
+            if (current.isInJail()) {
+                appendLog(current.getName() + " ถูกส่งเข้าคุก ตาหน้าต้องทอยหนีหรือจ่ายประกัน");
+            }
         }
 
         checkGameOver();
         notifyObservers();
+    }
+
+    /** ผลของช่องพิเศษ 5 ช่อง ได้ทันที ไม่ต้องกดจั่ว */
+    private void applySpecialTile(Player current, EventTile tile) {
+        String type = tile.getEventType();
+        if (EventTile.CAMP.equals(type)) {
+            current.addMoney(EventTile.CAMP_HEAL);
+            current.setCampDefense(true);
+            appendLog("[ช่องพิเศษ] " + tile.getDescription());
+        } else if (EventTile.WATCHTOWER.equals(type)) {
+            appendLog("[ช่องพิเศษ] " + tile.getDescription());
+            appendLog(buildScoutReport(current));
+        } else if (EventTile.TRAINING_GROUND.equals(type)) {
+            current.setTrainingBoost(true);
+            appendLog("[ช่องพิเศษ] " + tile.getDescription());
+        } else {
+            appendLog("[ช่องพิเศษ] " + tile.getDescription());
+        }
+        pendingAction = PendingAction.NONE;
+    }
+
+    /** หอคอย: ไล่เมืองของคนอื่น แล้วพิมพ์เจ้าของ ค่าเช่า เกราะ */
+    public String buildScoutReport(Player viewer) {
+        StringBuilder sb = new StringBuilder("ส่องเมือง:");
+        boolean found = false;
+        for (Tile tile : board.getAllTiles()) {
+            if (!(tile instanceof CityTile)) continue;
+            CityTile city = (CityTile) tile;
+            Player owner = city.getOwner();
+            if (owner == null || owner == viewer || owner.isBankrupt()) continue;
+            found = true;
+            int linked = board.calculateConnectedTerritory(city.getId(), owner);
+            int armor = city.getBaseRent() + linked * 50;
+            if (owner.hasCampDefense()) armor += EventTile.CAMP_DEFENSE_BONUS;
+            sb.append("\n- ช่อง ").append(city.getId()).append(" ").append(city.getName())
+              .append(" | ").append(owner.getName())
+              .append(" | ค่าเช่า ").append(city.getBaseRent())
+              .append(" | เกราะ ").append(armor);
+        }
+        if (!found) return "ส่องเมือง: ยังไม่มีเมืองของคนอื่น";
+        return sb.toString();
+    }
+
+    /**
+     * ทอยหนีคุก
+     * ได้ 5 หรือ 6 = ออก แต่เทิร์นนี้ยังไม่เดิน
+     * ไม่ได้ และยังไม่ครบ 3 ครั้ง = อยู่ต่อ
+     * ครบ 3 ครั้ง = ออกเอง เทิร์นนี้ก็ยังไม่เดิน
+     */
+    private void tryEscapeJail(Player current) {
+        int roll = dice.roll();
+        lastRoll = roll;
+        hasRolledThisTurn = true;
+        pendingAction = PendingAction.NONE;
+        current.setJailTurns(current.getJailTurns() + 1);
+
+        if (roll >= JAIL_ESCAPE_ROLL) {
+            current.setInJail(false);
+            lastGameLog = current.getName() + " ทอยได้ " + roll + " ออกจากคุกได้ (เทิร์นนี้ยังไม่เดิน)";
+        } else if (current.getJailTurns() >= JAIL_MAX_TRIES) {
+            current.setInJail(false);
+            lastGameLog = current.getName() + " ทอยได้ " + roll
+                + " ครบ " + JAIL_MAX_TRIES + " ครั้ง ถูกปล่อยออกจากคุก (เทิร์นนี้ยังไม่เดิน)";
+        } else {
+            lastGameLog = current.getName() + " ทอยได้ " + roll
+                + " ยังออกจากคุกไม่ได้ (" + current.getJailTurns() + "/" + JAIL_MAX_TRIES
+                + ") ต้องได้ " + JAIL_ESCAPE_ROLL + " ขึ้นไป";
+        }
+        notifyObservers();
+    }
+
+    /** จ่าย 100 ออกจากคุก เงินไม่พอไม่ล้มละลาย และเทิร์นนี้ยังไม่เดิน */
+    public void payBail() {
+        if (gameOver) return;
+        Player current = getCurrentPlayer();
+        if (!current.isInJail() || hasRolledThisTurn) return;
+
+        if (!current.deductMoney(JAIL_BAIL)) {
+            lastGameLog = current.getName() + " มีเงินไม่พอจ่ายประกัน " + JAIL_BAIL + " บาท";
+            notifyObservers();
+            return;
+        }
+        current.setInJail(false);
+        hasRolledThisTurn = true;
+        pendingAction = PendingAction.NONE;
+        lastGameLog = current.getName() + " จ่ายประกัน " + JAIL_BAIL + " บาท ออกจากคุก (เทิร์นนี้ยังไม่เดิน)";
+        notifyObservers();
+    }
+
+    private void appendLog(String line) {
+        if (line == null || line.isEmpty()) return;
+        if (lastGameLog == null || lastGameLog.isEmpty()) lastGameLog = line;
+        else lastGameLog += "\n" + line;
     }
 
     // =========================================================================
@@ -125,6 +293,11 @@ public class GameController {
     // =========================================================================
     public void processPendingAction(boolean confirm) {
         if (gameOver) return;
+        // ช่องการ์ดข้ามไม่ได้ ทั้งกดตกลงและปฏิเสธจะจั่วให้
+        if (pendingAction == PendingAction.DRAW_CARD) {
+            drawPendingCard();
+            return;
+        }
         Player current = getCurrentPlayer();
         Tile landedTile = board.getTile(current.getCurrentTileId());
 
@@ -171,6 +344,8 @@ public class GameController {
     // =========================================================================
     public void endTurn() {
         if (gameOver) return;
+        // ยังจั่วไม่เสร็จ หรือยังไม่ตอบเมือง ห้ามส่งเทิร์น
+        if (pendingAction != PendingAction.NONE) return;
 
         hasRolledThisTurn = false;
         nextTurn();
@@ -206,13 +381,21 @@ public class GameController {
         sb.append("HasRolled:").append(hasRolledThisTurn).append("\n");
         sb.append("PendingAction:").append(pendingAction.name()).append("\n");
         sb.append("GameOver:").append(gameOver).append("\n");
+        sb.append("LastRoll:").append(lastRoll).append("\n");
 
         for (Player p : players) {
             sb.append("Player:").append(p.getId()).append(",")
               .append(p.getName()).append(",")
               .append(p.getMoney()).append(",")
               .append(p.getCurrentTileId()).append(",")
-              .append(p.isInJail()).append("\n");
+              .append(p.isInJail()).append(",")
+              .append(p.getJailTurns()).append(",")
+              .append(p.hasCampDefense()).append(",")
+              .append(p.hasTrainingBoost()).append(",")
+              .append(p.hasSiegeDiscount()).append("\n");
+            for (Card card : p.getCards()) {
+                sb.append("Card:").append(p.getId()).append(",").append(card.getType()).append("\n");
+            }
         }
 
         for (Tile tile : board.getAllTiles()) {
@@ -244,6 +427,7 @@ public class GameController {
         Map<String, String> meta = new HashMap<>();
         List<String[]> playerLines = new ArrayList<>();
         List<String[]> cityLines = new ArrayList<>();
+        List<String[]> cardLines = new ArrayList<>();
 
         for (String rawLine : data.split("\n")) {
             String line = rawLine.trim();
@@ -253,6 +437,8 @@ public class GameController {
                 playerLines.add(line.substring("Player:".length()).split(","));
             } else if (line.startsWith("City:")) {
                 cityLines.add(line.substring("City:".length()).split(","));
+            } else if (line.startsWith("Card:")) {
+                cardLines.add(line.substring("Card:".length()).split(","));
             } else {
                 int idx = line.indexOf(':');
                 if (idx > 0) meta.put(line.substring(0, idx), line.substring(idx + 1));
@@ -272,6 +458,7 @@ public class GameController {
         controller.totalTurnsPlayed = Integer.parseInt(meta.getOrDefault("CurrentTurn", "1"));
         controller.hasRolledThisTurn = Boolean.parseBoolean(meta.getOrDefault("HasRolled", "false"));
         controller.gameOver = Boolean.parseBoolean(meta.getOrDefault("GameOver", "false"));
+        controller.lastRoll = Integer.parseInt(meta.getOrDefault("LastRoll", "0"));
         try {
             controller.pendingAction = PendingAction.valueOf(meta.getOrDefault("PendingAction", "NONE"));
         } catch (IllegalArgumentException e) {
@@ -282,12 +469,26 @@ public class GameController {
             int id = Integer.parseInt(fields[0].trim());
             int money = Integer.parseInt(fields[2].trim());
             int tileId = Integer.parseInt(fields[3].trim());
-            boolean inJail = Boolean.parseBoolean(fields[4].trim());
+            boolean inJail = fields.length > 4 && Boolean.parseBoolean(fields[4].trim());
 
             Player player = controller.players.get(id);
             player.setMoney(money);
             player.moveTo(tileId);
+            // setInJail รีเซ็ตจำนวนครั้งที่ทอยหนี ดังนั้นต้องเซ็ตจำนวนครั้งทีหลัง
             player.setInJail(inJail);
+            if (fields.length > 5) player.setJailTurns(Integer.parseInt(fields[5].trim()));
+            if (fields.length > 6) player.setCampDefense(Boolean.parseBoolean(fields[6].trim()));
+            if (fields.length > 7) player.setTrainingBoost(Boolean.parseBoolean(fields[7].trim()));
+            if (fields.length > 8) player.setSiegeDiscount(Boolean.parseBoolean(fields[8].trim()));
+        }
+
+        for (String[] fields : cardLines) {
+            if (fields.length < 2) continue;
+            int playerId = Integer.parseInt(fields[0].trim());
+            Card card = EventCard.cardOfType(fields[1].trim());
+            if (card != null && playerId >= 0 && playerId < controller.players.size()) {
+                controller.players.get(playerId).addCard(card);
+            }
         }
 
         for (String[] fields : cityLines) {
@@ -362,4 +563,5 @@ public class GameController {
     public Player getCurrentPlayer() { return players.get(currentPlayerIndex); }
     public PendingAction getPendingAction() { return pendingAction; }
     public String getLastGameLog() { return lastGameLog; }
+    public int getLastRoll() { return lastRoll; }
 }

@@ -130,7 +130,7 @@ public class PlayerStatusPanel extends JPanel {
 
         List<String> tags = new ArrayList<>();
         if (p.isInJail()) {
-            tags.add("ติดคุก " + p.getJailTurns() + "/" + 3 /* TODO(พีท): เปลี่ยนเป็น GameController.JAIL_MAX_TRIES หลังเพิ่มค่าคงที่ใน GameController */);
+            tags.add("ติดคุก " + p.getJailTurns() + "/" + GameController.JAIL_MAX_TRIES);
         }
         if (p.hasCampDefense()) tags.add("เกราะค่าย");
         if (p.hasTrainingBoost()) tags.add("ซ้อมโจมตี");
