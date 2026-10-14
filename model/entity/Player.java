@@ -117,17 +117,20 @@ public class Player {
      * จ่ายไม่ครบ: โอนเท่าที่มีให้เจ้าหนี้ เงินตัวเองเหลือ 0 แล้วล้มละลาย คืน false
      * ผู้เรียกต้องคืนเมืองเองผ่าน Board.settleDebt() หรือ releaseCitiesOf()
      */
+    
     public boolean payTo(Player creditor, int amount) {
-        if (amount <= 0) return true;
-        if (this.money >= amount) {
-            this.money -= amount;
-            if (creditor != null) creditor.addMoney(amount);
+        if (amount <= 0) return true; //ไม่มียอดต้องจ่าย ก็จบทันที
+
+        if (this.money >= amount) { // ตรวจสอบเงื่อนไข เงินพอ หักเงินตัวเองตามยอด
+            this.money -= amount; 
+            if (creditor != null) creditor.addMoney(amount); //ถ้ามีเจ้าหนี้ ให้โอนเงินจำนวนเดียวกันเข้าไป
             return true;
         }
-        if (creditor != null && this.money > 0) creditor.addMoney(this.money);
+
+        if (creditor != null && this.money > 0) creditor.addMoney(this.money); // เงินไม่พอ เข้าเงื่อนไขนี้
         this.money = 0;
-        this.bankrupt = true;
-        return false;
+        this.bankrupt = true; //ตั้งธงล้มละลาย
+        return false; //คืน false ให้ผู้เรียกรู้ว่าจ่ายไม่ครบ
     }
 
     public void addCard(Card card) {

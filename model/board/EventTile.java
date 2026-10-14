@@ -11,6 +11,7 @@ package model.board;
  *
  * @author ฟิล์ม (feature/board-setup)
  */
+
 public class EventTile extends Tile {
     public static final String CHANCE = "CHANCE";
     public static final String START = "START";
