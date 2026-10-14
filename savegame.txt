@@ -1,17 +1,15 @@
 PlayerCount:2
-InitialMoney:1500
+InitialMoney:500
 MaxTurns:20
-CurrentTurn:1
+CurrentTurn:3
 CurrentPlayer:0
-HasRolled:false
+HasRolled:true
 PendingAction:NONE
 GameOver:false
-LastRoll:0
-Player:0,Player 1,1500,0,true,2,true,false,false
-Card:0,TREASURE
-Player:1,Player 2,1500,0,false,0,false,false,false
+Player:0,Player 1,600,16,true
+Player:1,Player 2,500,14,true
 City:1,-1
-City:2,-1
+City:2,0
 City:4,-1
 City:6,-1
 City:8,-1

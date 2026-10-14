@@ -1,15 +1,12 @@
 package model.board;
 
-
-import model.entity.Player;
-
 /**
  * ช่องที่ไม่ใช่เมือง มี 2 แบบ
  * 1) ช่องพิเศษ 5 ช่อง (จุดเริ่ม ค่าย หอคอย คุก สนามซ้อม) ได้ผลทันที
  * 2) ช่องการ์ด (CHANCE) ผู้เล่นต้องกดจั่วการ์ด
  *
- * ผลจริงไม่ได้ทำใน onStep()
- * GameController เป็นคนอ่าน getEventType() แล้วทำให้
+ * ผลของช่องไม่ได้เกิดที่ตัวช่อง
+ * GameController.resolveLanding() อ่าน getEventType() แล้วทำให้
  * เพื่อไม่ให้กฎเกมไปกองอยู่ในคลาสวาดช่อง
  *
  * @author ฟิล์ม (feature/board-setup)
@@ -57,10 +54,9 @@ public class EventTile extends Tile {
         }
     }
 
-    /** คำอธิบายกติกา */
+    /** คำอธิบายกติกา คัดจาก EventTile ของ step12 เป็นภาษาอังกฤษ */
     public String getDescription() {
         switch (eventType) {
-            // *** \u00B7 คือ Unicode Escape Sequence ที่หมายถึงตัวอักษร Middle Dot (·) หรือจุดกึ่งกลาง  ***
             case START:
                 return "START  \u00B7  PASS THIS TILE TO GET +" + PASS_START_BONUS;
             case CAMP:
@@ -74,10 +70,5 @@ public class EventTile extends Tile {
             default:
                 return "EVENT SECTOR  \u00B7  PRESS DRAW CARD";
         }
-    }
-
-    @Override
-    public void onStep(Player player) {
-        // ผลของช่องทำที่ GameController.resolveLanding()
     }
 }

@@ -22,7 +22,7 @@ public class MainMenuPanel extends JPanel {
 
         // ข้อความชื่อเกม
         JLabel lblTitle = new JLabel("MONOPOLY & ZONE RUSH", SwingConstants.CENTER);
-        lblTitle.setFont(FontUtil.getThaiFontBold(28f));
+        lblTitle.setFont(FontUtil.getThaiFontBold(36f));
         lblTitle.setForeground(Color.WHITE);
 
         // ปุ่มกดเมนู

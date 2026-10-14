@@ -324,12 +324,17 @@ public class GameController {
             } else { // ยอมจ่ายค่าเช่า
                 int connectedCount = board.calculateConnectedTerritory(city.getId(), defender);
                 int rent = city.getBaseRent() * connectedCount;
+                String defenderName = defender != null ? defender.getName() : "เจ้าของเมือง";
+                int held = Math.max(attacker.getMoney(), 0);
 
-                if (attacker.deductMoney(rent)) {
-                    if (defender != null) defender.addMoney(rent);
-                    lastGameLog = attacker.getName() + " จ่ายค่าเช่า " + rent + " บาท ให้แก่ " + (defender != null ? defender.getName() : "เจ้าของเมือง");
+                // จ่ายครบแม้เหลือ 0 ก็ยังไม่ล้มละลาย
+                // จ่ายไม่ครบ: โอนเท่าที่มี เหลือ 0 ล้มละลาย และคืนเมือง
+                if (board.settleDebt(attacker, defender, rent)) {
+                    lastGameLog = attacker.getName() + " จ่ายค่าเช่า " + rent + " บาท ให้แก่ " + defenderName;
                 } else {
-                    lastGameLog = attacker.getName() + " เงินไม่พอจ่ายค่าเช่า! ล้มละลาย";
+                    int paid = Math.min(held, rent);
+                    lastGameLog = attacker.getName() + " จ่ายค่าเช่าไม่ครบ (จ่าย " + paid + " จาก " + rent
+                        + " บาท) ล้มละลายและเสียเมืองทั้งหมด";
                 }
             }
         }
@@ -372,6 +377,11 @@ public class GameController {
     // PART 6: SAVE & LOAD SYSTEM (ระบบบันทึกและโหลดเกม)
     // =========================================================================
     public void saveGame() {
+        if (gameOver) {
+            this.lastGameLog = "เกมจบแล้ว บันทึกไม่ได้";
+            notifyObservers();
+            return;
+        }
         StringBuilder sb = new StringBuilder();
         sb.append("PlayerCount:").append(settings.getPlayerCount()).append("\n");
         sb.append("InitialMoney:").append(settings.getInitialMoney()).append("\n");
@@ -392,7 +402,8 @@ public class GameController {
               .append(p.getJailTurns()).append(",")
               .append(p.hasCampDefense()).append(",")
               .append(p.hasTrainingBoost()).append(",")
-              .append(p.hasSiegeDiscount()).append("\n");
+              .append(p.hasSiegeDiscount()).append(",")
+              .append(p.isBankrupt()).append("\n");
             for (Card card : p.getCards()) {
                 sb.append("Card:").append(p.getId()).append(",").append(card.getType()).append("\n");
             }
@@ -459,8 +470,12 @@ public class GameController {
         controller.hasRolledThisTurn = Boolean.parseBoolean(meta.getOrDefault("HasRolled", "false"));
         controller.gameOver = Boolean.parseBoolean(meta.getOrDefault("GameOver", "false"));
         controller.lastRoll = Integer.parseInt(meta.getOrDefault("LastRoll", "0"));
+        String pendingName = meta.getOrDefault("PendingAction", "NONE");
+        // เซฟเก่าอาจยังเขียนสถานะที่ถอดออกแล้ว
+        if ("PAY_RENT".equals(pendingName)) pendingName = "SIEGE_OR_PAY";
+        if ("IN_JAIL".equals(pendingName)) pendingName = "NONE";
         try {
-            controller.pendingAction = PendingAction.valueOf(meta.getOrDefault("PendingAction", "NONE"));
+            controller.pendingAction = PendingAction.valueOf(pendingName);
         } catch (IllegalArgumentException e) {
             controller.pendingAction = PendingAction.NONE;
         }
@@ -480,6 +495,12 @@ public class GameController {
             if (fields.length > 6) player.setCampDefense(Boolean.parseBoolean(fields[6].trim()));
             if (fields.length > 7) player.setTrainingBoost(Boolean.parseBoolean(fields[7].trim()));
             if (fields.length > 8) player.setSiegeDiscount(Boolean.parseBoolean(fields[8].trim()));
+            if (fields.length > 9) {
+                player.setBankrupt(Boolean.parseBoolean(fields[9].trim()));
+            } else if (money <= 0) {
+                // เซฟเก่าไม่มีธงล้มละลาย เงินไม่เกิน 0 ถือว่าออกจากเกมแล้วตามกติกาเดิม
+                player.setBankrupt(true);
+            }
         }
 
         for (String[] fields : cardLines) {
@@ -500,55 +521,85 @@ public class GameController {
             }
         }
 
-        controller.lastGameLog = "โหลดเกมที่บันทึกไว้สำเร็จ (ดำเนินเกมต่อจากเทิร์นที่ " + controller.totalTurnsPlayed + ")";
+        for (Player p : controller.players) {
+            if (p.isBankrupt()) controller.board.releaseCitiesOf(p);
+        }
+
+        if (controller.gameOver) {
+            controller.winner = controller.findWinner();
+            String who = controller.winner != null ? controller.winner.getName() : "ไม่มีผู้ชนะ";
+            controller.lastGameLog = "โหลดเกมที่จบแล้ว ผู้ชนะคือ " + who;
+        } else {
+            controller.lastGameLog = "โหลดเกมที่บันทึกไว้สำเร็จ (ดำเนินเกมต่อจากเทิร์นที่ " + controller.totalTurnsPlayed + ")";
+        }
         return controller;
     }
 
     // =========================================================================
     // PART 7: GAME OVER & WINNER CALCULATION (การเช็กจบเกมและคิดผลชนะ)
     // =========================================================================
-    private void checkGameOver() {
-        int activePlayers = 0;
-        Player lastActive = null;
+    private int countActivePlayers() {
+        int active = 0;
         for (Player p : players) {
-            if (!p.isBankrupt()) {
-                activePlayers++;
-                lastActive = p;
-            }
+            if (!p.isBankrupt()) active++;
         }
-        if (activePlayers <= 1) {
-            gameOver = true;
-            winner = lastActive;
-            lastGameLog = "เกมจบลงแล้ว! ผู้ชนะคือ: " + (winner != null ? winner.getName() : "ไม่มีผู้ชนะ");
-        }
+        return active;
     }
 
-    private void calculateSuddenDeathWinner() {
-        gameOver = true;
-        Player topPlayer = null;
-        int maxWealth = -1;
+    /** เงินสดบวกกับราคาเมืองที่ยังถืออยู่ */
+    private int wealthOf(Player player) {
+        int wealth = player.getMoney();
+        for (Tile tile : board.getAllTiles()) {
+            if (tile instanceof CityTile && ((CityTile) tile).getOwner() == player) {
+                wealth += ((CityTile) tile).getBasePrice();
+            }
+        }
+        return wealth;
+    }
 
+    /**
+     * เหลือคนไม่ล้มละลายคนเดียว คนนั้นชนะ
+     * ถ้ายังเหลือหลายคน ให้คนที่ทรัพย์สินสูงสุดชนะ (กรณีหมดเทิร์น)
+     */
+    private Player findWinner() {
+        Player lastActive = null;
+        int active = 0;
         for (Player p : players) {
             if (p.isBankrupt()) continue;
+            active++;
+            lastActive = p;
+        }
+        if (active <= 1) return lastActive;
 
-            int wealth = p.getMoney();
-            for (int i = 0; i < 24; i++) {
-                Tile tile = board.getTile(i);
-                if (tile instanceof CityTile) {
-                    CityTile city = (CityTile) tile;
-                    if (city.getOwner() == p) {
-                        wealth += city.getBasePrice();
-                    }
-                }
-            }
-
+        Player topPlayer = null;
+        int maxWealth = -1;
+        for (Player p : players) {
+            if (p.isBankrupt()) continue;
+            int wealth = wealthOf(p);
             if (wealth > maxWealth) {
                 maxWealth = wealth;
                 topPlayer = p;
             }
         }
+        return topPlayer;
+    }
 
-        winner = topPlayer;
+    private void checkGameOver() {
+        if (countActivePlayers() > 1) return;
+        gameOver = true;
+        winner = findWinner();
+        String winLine = "เกมจบลงแล้ว! ผู้ชนะคือ: " + (winner != null ? winner.getName() : "ไม่มีผู้ชนะ");
+        if (lastGameLog == null || lastGameLog.isEmpty()) {
+            lastGameLog = winLine;
+        } else if (!lastGameLog.contains(winLine)) {
+            lastGameLog = lastGameLog + "\n" + winLine;
+        }
+    }
+
+    private void calculateSuddenDeathWinner() {
+        gameOver = true;
+        winner = findWinner();
+        int maxWealth = winner == null ? -1 : wealthOf(winner);
         lastGameLog = "หมดเวลา " + settings.getMaxTurns() + " เทิร์น! ผู้ที่มีทรัพย์สินสูงสุด (" + maxWealth + " บาท) คือ: " + (winner != null ? winner.getName() : "ไม่มีผู้ชนะ");
     }
 

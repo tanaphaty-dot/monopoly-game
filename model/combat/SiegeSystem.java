@@ -38,14 +38,19 @@ public class SiegeSystem {
         int siegeCost = armor + campBonus - trainBonus - discount;
         if (siegeCost < 0) siegeCost = 0;
 
-        // ตรวจสอบว่าฝ่ายบุกมีเงินพอตีเมือง
+        // เงินไม่พอตีเมือง: แพ้ทันทีและจ่ายค่าปรับเท่าค่าเช่าฐาน
+        // จ่ายผ่าน settleDebt เพื่อไม่ให้เงินงอกขึ้นเองเมื่อผู้บุกมีไม่ครบ
+        // จ่ายไม่ครบ = ล้มละลายและเสียเมืองทั้งหมด
         if (attacker.getMoney() < siegeCost) {
-            // หากเงินไม่พอตีเมือง ฝ่ายบุกจะแพ้ทันทีและโดนค่าปรับ
             int penalty = city.getBaseRent();
-            attacker.deductMoney(penalty);
-            defender.addMoney(penalty);
-            return new BattleResult(false, 0, penalty, 
-                attacker.getName() + " มีเงินไม่พอตีเมือง! จ่ายค่าผ่านทางปรับ " + penalty + " ให้ " + defender.getName());
+            int held = Math.max(attacker.getMoney(), 0);
+            int paid = Math.min(held, penalty);
+            boolean paidInFull = board.settleDebt(attacker, defender, penalty);
+            String message = paidInFull
+                ? attacker.getName() + " มีเงินไม่พอตีเมือง! จ่ายค่าผ่านทางปรับ " + penalty + " ให้ " + defender.getName()
+                : attacker.getName() + " มีเงินไม่พอตีเมืองและจ่ายค่าปรับไม่ครบ (จ่าย " + paid
+                    + " จาก " + penalty + ") ล้มละลายและเสียเมืองทั้งหมด";
+            return new BattleResult(false, 0, paid, message);
         }
 
         // เงินพอแล้วค่อยใช้โบนัส ทิ้งธงทันที เพราะใช้ได้ครั้งเดียว
