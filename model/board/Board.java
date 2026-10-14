@@ -80,8 +80,21 @@ public class Board {
         }
     }
 
+    /**
+     * จ่ายหนี้ให้เจ้าหนี้ (null = ธนาคาร)
+     * จ่ายครบได้แม้เงินจะเหลือ 0 และยังไม่ล้มละลาย
+     * จ่ายไม่ครบ: โอนเท่าที่มี เหลือ 0 ล้มละลาย และคืนเมืองของผู้จ่าย
+     * @return true ถ้าจ่ายครบ
+     */
+    public boolean settleDebt(Player debtor, Player creditor, int amount) {
+        if (debtor == null) return false;
+        if (debtor.payTo(creditor, amount)) return true;
+        releaseCitiesOf(debtor);
+        return false;
+    }
 
-    //รับ ID ช่องที่ตก และ ผู้เล่นเจ้าของเมือง
+    // นับเมืองติดกันของเจ้าของคนเดียวกัน ด้วย BFS
+    // รับ ID ช่องที่ตก และผู้เล่นเจ้าของเมือง
     public int calculateConnectedTerritory(int startTileId, Player targetOwner) {
         if (targetOwner == null) return 0;
         

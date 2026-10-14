@@ -67,7 +67,9 @@ public class ActionControlPanel extends JPanel {
     }
 
     private void confirmExit() {
-        String message = "<html><font face='Tahoma' size='4'>ระบบจะบันทึกเกม ณ จุดนี้ไว้ก่อนออก แล้วกลับไปหน้าเมนูหลัก ยืนยันหรือไม่?</font></html>";
+        String message = controller.isGameOver()
+            ? "<html><font face='Tahoma' size='4'>เกมจบแล้ว จะกลับไปหน้าเมนูหลักหรือไม่?</font></html>"
+            : "<html><font face='Tahoma' size='4'>ระบบจะบันทึกเกม ณ จุดนี้ไว้ก่อนออก แล้วกลับไปหน้าเมนูหลัก ยืนยันหรือไม่?</font></html>";
         int confirm = JOptionPane.showConfirmDialog(
             this, message, "ออกเกม / บันทึกและพัก", JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
@@ -88,18 +90,19 @@ public class ActionControlPanel extends JPanel {
             btnConfirm.setEnabled(false);
             btnRefuse.setEnabled(false);
             btnEndTurn.setEnabled(false);
+            btnSave.setEnabled(false);
             Player winner = controller.getWinner();
             hintLabel.setText(winner == null ? "เกมจบแล้ว" : "เกมจบแล้ว ผู้ชนะคือ " + winner.getName());
             return;
         }
+        btnSave.setEnabled(true);
 
         btnRoll.setEnabled(!hasRolled);
         btnDraw.setEnabled(pending == PendingAction.DRAW_CARD);
         btnBail.setEnabled(current.isInJail() && !hasRolled);
 
         boolean chooseCity = pending == PendingAction.BUY_CITY
-            || pending == PendingAction.SIEGE_OR_PAY
-            || pending == PendingAction.PAY_RENT;
+            || pending == PendingAction.SIEGE_OR_PAY;
         btnConfirm.setEnabled(chooseCity);
         btnRefuse.setEnabled(chooseCity);
         btnEndTurn.setEnabled(hasRolled && pending == PendingAction.NONE);
@@ -108,7 +111,7 @@ public class ActionControlPanel extends JPanel {
             btnConfirm.setText("ซื้อเมือง");
             btnRefuse.setText("ไม่ซื้อ");
             hintLabel.setText("เมืองว่าง: กดซื้อเมือง หรือไม่ซื้อ");
-        } else if (pending == PendingAction.SIEGE_OR_PAY || pending == PendingAction.PAY_RENT) {
+        } else if (pending == PendingAction.SIEGE_OR_PAY) {
             btnConfirm.setText("บุกยึด");
             btnRefuse.setText("จ่ายค่าเช่า");
             hintLabel.setText("เมืองคนอื่น: กดบุกยึด หรือจ่ายค่าเช่า");

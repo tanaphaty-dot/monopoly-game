@@ -25,6 +25,7 @@ public class GameSystemTest {
         testEventCardEffects();            // เก๋า (EventCard)
         testGameControllerAndFileFlow();   // พีท (GameController & Save/Load)
         testEventSystem();                 // ระบบ Event ที่เพิ่มเข้ามา
+        testDebtBankruptcyAndFinishedSave(); // หนี้ ล้มละลาย และเซฟเกมที่จบแล้ว
 
         // สรุปผลการทดสอบ
         System.out.println("\n==================================================");
@@ -296,5 +297,195 @@ public class GameSystemTest {
             && EventCard.TREASURE.equals(loadedPlayer.getCards().get(0).getType()),
             "Save/Load keeps cards in hand");
         System.out.println();
+    }
+
+    // ----------------------------------------------------------------
+    // 7. หนี้ที่จ่ายไม่ครบต้องล้มละลายจริง และเกมที่จบแล้วต้องมีผู้ชนะ
+    // ----------------------------------------------------------------
+    private static void testDebtBankruptcyAndFinishedSave() {
+        System.out.println("[TEST GROUP 7] Debt bankruptcy and finished saves");
+
+        Player payer = new Player(1, "Payer", 40);
+        Player creditor = new Player(2, "Creditor", 100);
+        assertTrue(payer.payTo(creditor, 40) && payer.getMoney() == 0 && !payer.isBankrupt(),
+            "Paying a debt in full down to 0 is not bankruptcy");
+        assertTrue(creditor.getMoney() == 140, "Creditor receives the full debt");
+
+        Player broke = new Player(3, "Broke", 15);
+        Player rich = new Player(4, "Rich", 500);
+        assertTrue(!broke.payTo(rich, 40) && broke.getMoney() == 0 && broke.isBankrupt(),
+            "An unpaid debt zeroes the payer and marks bankruptcy");
+        assertTrue(rich.getMoney() == 515, "Creditor receives only what the payer had");
+
+        Board board = new Board();
+        Player attacker = new Player(5, "SiegeAttacker", 10);
+        Player defender = new Player(6, "SiegeDefender", 500);
+        CityTile target = (CityTile) board.getTile(1);
+        CityTile owned = (CityTile) board.getTile(4);
+        target.setOwner(defender);
+        owned.setOwner(attacker);
+        BattleResult failed = SiegeSystem.resolveSiege(attacker, defender, target, board);
+        assertTrue(!failed.isAttackerWon() && failed.getPenaltyFee() == 10
+            && attacker.isBankrupt() && attacker.getMoney() == 0,
+            "Failed siege with too little money bankrupts the attacker");
+        assertTrue(defender.getMoney() == 510 && owned.getOwner() == null && target.getOwner() == defender,
+            "Failed siege pays only the attacker's cash and releases their cities");
+
+        Player exact = new Player(7, "ExactSiege", 70);
+        Player holder = new Player(8, "Holder", 1000);
+        CityTile forest = (CityTile) board.getTile(2);
+        forest.setOwner(holder);
+        BattleResult taken = SiegeSystem.resolveSiege(exact, holder, forest, board);
+        assertTrue(taken.isAttackerWon() && forest.getOwner() == exact
+            && exact.getMoney() == 0 && !exact.isBankrupt(),
+            "Paying a siege cost down to 0 still keeps the captured city");
+
+        GameSetting settings = new GameSetting();
+        settings.setPlayerCount(2);
+        settings.setInitialMoney(1500);
+        GameController bailGame = new GameController(settings);
+        Player bailPlayer = bailGame.getCurrentPlayer();
+        bailPlayer.setMoney(GameController.JAIL_BAIL);
+        bailPlayer.setInJail(true);
+        bailGame.payBail();
+        assertTrue(bailPlayer.getMoney() == 0 && !bailPlayer.isBankrupt()
+            && !bailPlayer.isInJail() && !bailGame.isGameOver(),
+            "Bail that spends the last coin does not bankrupt the player");
+
+        FileManager.saveGame(saveText(false, "BUY_CITY",
+            "Player:0,Player 1,100,1,false,0,false,false,false,false",
+            "Player:1,Player 2,500,0,false,0,false,false,false,false",
+            "1:-1"));
+        GameController buyGame = GameController.loadGame();
+        buyGame.processPendingAction(true);
+        Player buyer = buyGame.getPlayers().get(0);
+        CityTile bought = (CityTile) buyGame.getBoard().getTile(1);
+        assertTrue(buyer.getMoney() == 0 && !buyer.isBankrupt()
+            && bought.getOwner() == buyer && !buyGame.isGameOver(),
+            "Buying a city with exact money does not bankrupt or release it");
+
+        FileManager.saveGame(saveText(false, "SIEGE_OR_PAY",
+            "Player:0,Player 1,15,1,false,0,false,false,false,false",
+            "Player:1,Player 2,500,0,false,0,false,false,false,false",
+            "1:1", "2:0"));
+        GameController rentGame = GameController.loadGame();
+        rentGame.processPendingAction(false);
+        Player renter = rentGame.getPlayers().get(0);
+        Player landlord = rentGame.getPlayers().get(1);
+        CityTile keptByLandlord = (CityTile) rentGame.getBoard().getTile(1);
+        CityTile released = (CityTile) rentGame.getBoard().getTile(2);
+        assertTrue(renter.isBankrupt() && renter.getMoney() == 0 && released.getOwner() == null,
+            "Unpaid rent bankrupts the visitor and releases their cities");
+        assertTrue(landlord.getMoney() == 515 && keptByLandlord.getOwner() == landlord,
+            "Unpaid rent transfers only the visitor's cash");
+        assertTrue(rentGame.isGameOver() && rentGame.getWinner() == landlord
+            && rentGame.getLastGameLog().contains("ล้มละลาย"),
+            "The last solvent player wins after a rent bankruptcy");
+        String savedAfterOver = FileManager.loadGame();
+        rentGame.saveGame();
+        assertTrue(savedAfterOver.equals(FileManager.loadGame())
+            && rentGame.getLastGameLog().contains("บันทึกไม่ได้"),
+            "A finished game refuses to overwrite the save");
+
+        FileManager.saveGame(saveText(false, "SIEGE_OR_PAY",
+            "Player:0,Player 1,20,1,false,0,false,false,false,false",
+            "Player:1,Player 2,500,0,false,0,false,false,false,false",
+            "1:1", "4:0"));
+        GameController exactRent = GameController.loadGame();
+        exactRent.processPendingAction(false);
+        Player exactRenter = exactRent.getPlayers().get(0);
+        CityTile stillOwned = (CityTile) exactRent.getBoard().getTile(4);
+        assertTrue(exactRenter.getMoney() == 0 && !exactRenter.isBankrupt()
+            && stillOwned.getOwner() == exactRenter && !exactRent.isGameOver(),
+            "Rent paid in full down to 0 keeps the payer and their cities");
+        assertTrue(exactRent.getPlayers().get(1).getMoney() == 520, "Landlord receives the full rent");
+
+        FileManager.saveGame(saveText(false, "SIEGE_OR_PAY",
+            "Player:0,Player 1,10,1,false,0,false,false,false,false",
+            "Player:1,Player 2,500,0,false,0,false,false,false,false",
+            "1:1", "4:0"));
+        GameController siegeGame = GameController.loadGame();
+        siegeGame.processPendingAction(true);
+        assertTrue(siegeGame.getPlayers().get(0).isBankrupt()
+            && ((CityTile) siegeGame.getBoard().getTile(4)).getOwner() == null,
+            "Choosing to siege without enough money releases the attacker's cities");
+        assertTrue(siegeGame.getPlayers().get(1).getMoney() == 510
+            && ((CityTile) siegeGame.getBoard().getTile(1)).getOwner() == siegeGame.getPlayers().get(1),
+            "A failed siege from the controller does not mint penalty money");
+
+        FileManager.saveGame(saveText(true, "NONE",
+            "Player:0,Player 1,100,0,false,0,false,false,false,false",
+            "Player:1,Player 2,450,0,false,0,false,false,false,false",
+            "18:0"));
+        GameController finished = GameController.loadGame();
+        assertTrue(finished.isGameOver() && finished.getWinner() == finished.getPlayers().get(0),
+            "Loading a finished game restores the richer winner");
+        finished.saveGame();
+        assertTrue(finished.getLastGameLog().contains("บันทึกไม่ได้"),
+            "Save stays closed after loading a finished game");
+
+        FileManager.saveGame(saveText(false, "PAY_RENT",
+            "Player:0,Player 1,1500,1,false,0,false,false,false,false",
+            "Player:1,Player 2,1500,0,false",
+            "1:1"));
+        GameController legacy = GameController.loadGame();
+        assertTrue(legacy.getPendingAction() == PendingAction.SIEGE_OR_PAY,
+            "An old PAY_RENT save loads as SIEGE_OR_PAY");
+
+        FileManager.saveGame(saveText(false, "IN_JAIL",
+            "Player:0,Player 1,1500,14,true,1,false,false,false,false",
+            "Player:1,Player 2,1500,0,false",
+            ""));
+        GameController oldJail = GameController.loadGame();
+        assertTrue(oldJail.getPendingAction() == PendingAction.NONE && oldJail.getCurrentPlayer().isInJail(),
+            "An old IN_JAIL save keeps the jail flag and clears the dead pending state");
+
+        GameController aliveBroke = new GameController(settings);
+        aliveBroke.getCurrentPlayer().setMoney(0);
+        ((CityTile) aliveBroke.getBoard().getTile(4)).setOwner(aliveBroke.getCurrentPlayer());
+        aliveBroke.saveGame();
+        GameController reloaded = GameController.loadGame();
+        assertTrue(reloaded.getPlayers().get(0).getMoney() == 0 && !reloaded.getPlayers().get(0).isBankrupt()
+            && ((CityTile) reloaded.getBoard().getTile(4)).getOwner() == reloaded.getPlayers().get(0),
+            "A solvent player with 0 money stays solvent and keeps their city after save and load");
+
+        FileManager.saveGame(saveText(false, "NONE",
+            "Player:0,Player 1,0,0,false",
+            "Player:1,Player 2,800,0,false",
+            "2:0"));
+        GameController oldZero = GameController.loadGame();
+        assertTrue(oldZero.getPlayers().get(0).isBankrupt() && !oldZero.getPlayers().get(1).isBankrupt()
+            && ((CityTile) oldZero.getBoard().getTile(2)).getOwner() == null,
+            "An old save with 0 money and no flag still loads as bankrupt and releases cities");
+        System.out.println();
+    }
+
+    /** เขียนเซฟสั้นๆ สำหรับเทส เมืองที่ไม่ได้ระบุถือว่าว่าง */
+    private static String saveText(boolean gameOver, String pending, String player0, String player1, String... owned) {
+        java.util.Map<Integer, String> owners = new java.util.HashMap<Integer, String>();
+        for (String item : owned) {
+            if (item == null || item.isEmpty()) continue;
+            String[] pair = item.split(":");
+            owners.put(Integer.parseInt(pair[0]), pair[1]);
+        }
+        int[] cities = {1, 2, 4, 6, 8, 9, 12, 13, 15, 18, 19, 21};
+        StringBuilder sb = new StringBuilder();
+        sb.append("PlayerCount:2\n");
+        sb.append("InitialMoney:1500\n");
+        sb.append("MaxTurns:20\n");
+        sb.append("CurrentTurn:1\n");
+        sb.append("CurrentPlayer:0\n");
+        sb.append("HasRolled:true\n");
+        sb.append("PendingAction:").append(pending).append("\n");
+        sb.append("GameOver:").append(gameOver).append("\n");
+        sb.append("LastRoll:1\n");
+        sb.append(player0).append("\n");
+        sb.append(player1).append("\n");
+        for (int id : cities) {
+            String owner = "-1";
+            if (owners.containsKey(id)) owner = owners.get(id);
+            sb.append("City:").append(id).append(",").append(owner).append("\n");
+        }
+        return sb.toString();
     }
 }

@@ -85,9 +85,11 @@ public class EventCard {
             player.moveTo(JAIL_TILE);
             player.setInJail(true);
         } else if (TAX_PENALTY.equals(type) || type.contains("TAX")) {
-            // จ่ายให้ธนาคาร (เจ้าหนี้เป็น null) เงินไม่พอ = ล้มละลาย และเสียเมืองทั้งหมด
-            if (!player.payTo(null, TAX_AMOUNT) && board != null) {
-                board.releaseCitiesOf(player);
+            // จ่ายให้ธนาคาร เงินไม่พอ = ล้มละลาย และเสียเมืองทั้งหมด
+            if (board != null) {
+                board.settleDebt(player, null, TAX_AMOUNT);
+            } else {
+                player.payTo(null, TAX_AMOUNT);
             }
         } else if (BUFF_DEFENSE.equals(type)) {
             player.setCampDefense(true);

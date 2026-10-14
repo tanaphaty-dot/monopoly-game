@@ -19,6 +19,7 @@ public class Player {
     private boolean campDefense;    // เกราะค่าย ใช้ครั้งเดียวตอนถูกบุก
     private boolean trainingBoost;  // โบนัสซ้อม ใช้ครั้งเดียวตอนไปบุก
     private boolean siegeDiscount;  // ส่วนลดการ์ด ใช้ครั้งเดียวตอนไปบุก
+    private boolean bankrupt;       // จ่ายหนี้ไม่ครบเท่านั้น เงินเหลือ 0 หลังจ่ายสำเร็จไม่นับ
     private final List<Card> cards;
 
     public Player(int id, String name, int initialMoney) {
@@ -31,6 +32,7 @@ public class Player {
         this.campDefense = false;
         this.trainingBoost = false;
         this.siegeDiscount = false;
+        this.bankrupt = false;
         this.cards = new ArrayList<>();
     }
 
@@ -56,12 +58,19 @@ public class Player {
         this.money = money;
     }
 
+    /**
+     * หักเงินเมื่อมีพอเท่านั้น
+     * ใช้กับของที่เลือกจ่ายเอง เช่น ซื้อเมือง ค่าบุกที่จ่ายไหว และประกันคุก
+     * เงินไม่พอจะไม่หัก และไม่ล้มละลาย
+     * หักจนเหลือ 0 พอดีก็ยังไม่ล้มละลาย
+     */
     public boolean deductMoney(int amount) {
+        if (amount < 0) return false;
         if (this.money >= amount) {
             this.money -= amount;
-            return true; // จ่ายเงินสำเร็จ
+            return true;
         }
-        return false; // เงินไม่พอ (ผู้เล่นล้มละลายหรือต้องหาเงินเพิ่ม)
+        return false;
     }
 
     public void moveTo(int tileId) {
@@ -103,9 +112,10 @@ public class Player {
     }
 
     /**
-     * จ่ายเงินให้ผู้เล่นอีกคน หรือจ่ายธนาคารถ้าระบุ creditor เป็น null
-     * เงินพอ: หักเต็มจำนวน คืน true
-     * เงินไม่พอ: เหลือ 0 แล้วล้มละลาย คืน false
+     * จ่ายหนี้ให้ผู้เล่นอีกคน หรือจ่ายธนาคารถ้า creditor เป็น null
+     * จ่ายครบ: หักเต็มจำนวน คืน true แม้เงินจะเหลือ 0 ก็ยังไม่ล้มละลาย
+     * จ่ายไม่ครบ: โอนเท่าที่มีให้เจ้าหนี้ เงินตัวเองเหลือ 0 แล้วล้มละลาย คืน false
+     * ผู้เรียกต้องคืนเมืองเองผ่าน Board.settleDebt() หรือ releaseCitiesOf()
      */
     public boolean payTo(Player creditor, int amount) {
         if (amount <= 0) return true;
@@ -116,6 +126,7 @@ public class Player {
         }
         if (creditor != null && this.money > 0) creditor.addMoney(this.money);
         this.money = 0;
+        this.bankrupt = true;
         return false;
     }
 
@@ -127,8 +138,16 @@ public class Player {
         this.cards.remove(card);
     }
 
-    // NOTICE (ถึง พีท & เก๋า): เมธอดเช็กว่าผู้เล่นยังมีชีวิตอยู่ในเกมมั้ย
+    /**
+     * ล้มละลายเฉพาะตอนจ่ายหนี้ไม่ครบ (payTo คืน false)
+     * ซื้อเมือง จ่ายค่าเช่าครบ จ่ายค่าบุกครบ หรือจ่ายประกันจนเหลือ 0 ยังเล่นต่อได้
+     */
     public boolean isBankrupt() {
-        return this.money <= 0;
+        return bankrupt;
+    }
+
+    /** ใช้ตอนโหลดเซฟ ค่านี้ไม่ตามเงินคงเหลือ */
+    public void setBankrupt(boolean bankrupt) {
+        this.bankrupt = bankrupt;
     }
 }

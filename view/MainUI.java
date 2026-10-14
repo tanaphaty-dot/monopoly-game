@@ -123,11 +123,4 @@ public class MainUI extends JFrame {
         
         System.exit(0); // ปิดโปรแกรม
     }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            MainUI ui = new MainUI();
-            ui.setVisible(true);
-        });
-    }
 }

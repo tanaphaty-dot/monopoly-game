@@ -2,6 +2,9 @@ import javax.swing.*;
 import java.awt.*;
 import view.MainUI;
 
+/**
+ * จุดเริ่มเดียวของเกม /แก้
+ */
 public class Main {
     public static void main(String[] args) {
         // --- บังคับให้ Pop-up (JOptionPane) ทั้งหมดใช้ Font ภาษาไทย ---
