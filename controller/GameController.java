@@ -443,7 +443,7 @@ public class GameController {
         for (String rawLine : data.split("\n")) {
             String line = rawLine.trim();
             if (line.isEmpty()) continue;
-
+            
             if (line.startsWith("Player:")) {
                 playerLines.add(line.substring("Player:".length()).split(","));
             } else if (line.startsWith("City:")) {
@@ -454,6 +454,11 @@ public class GameController {
                 int idx = line.indexOf(':');
                 if (idx > 0) meta.put(line.substring(0, idx), line.substring(idx + 1));
             }
+            //indexOf() ใช้สำหรับค้นหาตำแหน่ง (Index) ของคำหรือตัวอักษรที่เราต้องการในข้อความ ว่ามันอยู่ตรงตำแหน่งไหน
+            //substring JavaScript text.substring(0, 4); ผลลัพธ์: "Java"
+            //.startsWith() ใช้สำหรับ ตรวจสอบว่าข้อความเริ่มต้นด้วยคำหรือตัวอักษรที่กำหนดไว้หรือไม่
+            //containsKey() ใช้สำหรับ ตรวจสอบว่ามี Key (กุญแจ หรือชื่อหัวข้อ) ที่เราต้องการ อยู่ในชุดข้อมูล (Map/Dictionary) นั้นๆ
+            //parseInt() ตัดเศษทิ้งอัตโนมัติ: เพราะมันทำหน้าที่แปลงเป็น จำนวนเต็ม ถ้าข้อความมีจุดทศนิยม มันจะตัดทศนิยมทิ้งหมดเลย (เช่น parseInt("10.99") จะได้ 10)
         }
 
         if (playerLines.isEmpty() || !meta.containsKey("PlayerCount")) return null;
